@@ -26,11 +26,11 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    max-height: 100vh;
+    min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 /* Gold Headings & Accents */
@@ -57,8 +57,8 @@ body {
 /* Main Game screen layout */
 #game-window-wrapper {
     position: relative;
-    width: 470px;
-    height: 630px;
+    width: var(--game-width, 470px);
+    height: var(--game-height, 630px);
     border-radius: 0px;
     overflow: hidden;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.15);
@@ -68,8 +68,8 @@ body {
 
 #gameCanvas {
     display: block;
-    width: 470px;
-    height: 630px;
+    width: 100%;
+    height: 100%;
     background-color: #1c1d22;
 }
 
@@ -78,8 +78,8 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 470px;
-    height: 630px;
+    width: 100%;
+    height: 100%;
     background: rgba(6, 8, 16, 0.88);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -87,9 +87,11 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.15);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: safe center;
     align-items: center;
-    padding: 24px;
+    padding: clamp(10px, 4cqw, 24px);
+    overflow-y: auto;
+    visibility: hidden;
     z-index: 10;
     opacity: 0;
     pointer-events: none;
@@ -99,6 +101,7 @@ body {
 }
 
 .menu-overlay.active {
+    visibility: visible;
     opacity: 1;
     pointer-events: auto;
     transform: scale(1);
@@ -155,7 +158,7 @@ h2 {
     border-radius: 0px;
     cursor: pointer;
     overflow: hidden;
-    transition: all 0.25s ease;
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
     box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
 }
 
@@ -236,8 +239,8 @@ h2 {
 
 /* Control Panel widget (Right sidebar) */
 #control-sidebar {
-    width: 470px;
-    height: 630px;
+    width: var(--game-width, 470px);
+    height: var(--game-height, 630px);
     background: rgba(6, 8, 16, 0.82);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -257,11 +260,11 @@ h2 {
     justify-content: flex-start;
 }
 
-#control-sidebar.in-game #instructions-section {
+body[data-mode="HAND"] #control-sidebar.in-game #instructions-section {
     display: none;
 }
 
-#control-sidebar.in-game #webcam-preview-container {
+body[data-mode="HAND"] #control-sidebar.in-game #webcam-preview-container {
     display: block;
     flex: 1;
     height: 100%;
@@ -402,4 +405,91 @@ h2 {
     font-size: 0.55rem;
     font-weight: 700;
     color: #ffd700;
+}
+
+/* Keep the 470x630 game world intact; only scale its display. */
+#play-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+#game-window-wrapper { container-type: inline-size; }
+.menu-overlay > * { flex-shrink: 0; }
+.menu-overlay h1 { font-size: clamp(0.85rem, 5cqw, 1.5rem); }
+.menu-overlay h2 { font-size: clamp(0.8rem, 4.5cqw, 1.25rem); }
+.menu-overlay .subtitle, .mode-help, #camera-status {
+    font-size: clamp(0.5rem, 2.3cqw, 0.65rem);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+.mode-help, #camera-status { color: var(--gold); }
+.menu-overlay .cyber-btn {
+    min-height: 44px;
+    font-size: clamp(0.5rem, 2.5cqw, 0.72rem);
+    padding: 10px;
+}
+.menu-overlay .btn-container { gap: 8px; }
+.cyber-btn { touch-action: manipulation; }
+.cyber-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: -4px; }
+.cyber-btn:disabled { opacity: 0.5; cursor: default; }
+.badge.touch { border: 1px solid var(--primary); color: var(--primary); }
+
+#touch-controls {
+    display: flex;
+    gap: 8px;
+    width: var(--game-width, 470px);
+    height: 62px;
+}
+#touch-controls[hidden] { display: none; }
+#touch-controls button {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 8px 4px;
+    font-size: 0.6rem;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+#touch-controls button.pressed { background: var(--primary); color: #000; }
+#gameCanvas { touch-action: none; }
+body[data-mode="HAND"] #btn-steer-left,
+body[data-mode="HAND"] #btn-steer-right { display: none; }
+body[data-mode="HAND"] #btn-touch-pause { max-width: 180px; margin: auto; }
+
+@media (max-width: 1000px) {
+    body { align-items: flex-start; background-attachment: scroll; }
+    #app-container { flex-direction: column; gap: 16px; }
+    #control-sidebar { width: min(100%, 470px); height: auto; }
+    #control-sidebar.in-game { display: none; }
+    body[data-mode="HAND"] #control-sidebar.in-game { display: flex; }
+    #control-sidebar.in-game #webcam-preview-container { flex: none; height: auto; aspect-ratio: 4 / 3; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    #play-area { flex-direction: row; }
+    #touch-controls { flex-direction: column; width: 116px; height: var(--game-height); }
+    #touch-controls button { flex: 1; }
+    #touch-controls[hidden] { display: none; }
+    #control-sidebar { display: none; }
+    body[data-mode="HAND"] #control-sidebar.in-game { display: flex; }
+    .menu-overlay .subtitle, .mode-help { margin-bottom: 8px; }
+}
+
+@media (max-width: 400px), (max-height: 500px) {
+    #game-hud { padding: 6px; }
+    .hud-panel { padding: 5px; }
+    .hud-label { font-size: 0.45rem; }
+    .hud-val { font-size: 0.55rem; }
+}
+
+#app-container {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(12px + env(safe-area-inset-left, 0px));
+    padding-right: calc(12px + env(safe-area-inset-right, 0px));
 }

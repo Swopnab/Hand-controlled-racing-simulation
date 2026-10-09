@@ -2,72 +2,80 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CyberSteer: Hand-Controlled Racing</title>
     <!-- Load Press Start 2P Pixel Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <!-- Load MediaPipe Hands & Camera CDN dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <!-- MediaPipe is loaded on demand by Hand Mode. Touch and keyboard work without it. -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app-container">
-        <!-- Game Window (Canvas and Screen Overlays) -->
-        <div id="game-window-wrapper">
-            <canvas id="gameCanvas" width="470" height="630"></canvas>
+        <main id="play-area" aria-label="CyberSteer racing game">
+            <!-- Game Window (Canvas and Screen Overlays) -->
+            <div id="game-window-wrapper">
+                <canvas id="gameCanvas" width="470" height="630"></canvas>
 
-            <!-- Game HUD (Floating elements) -->
-            <div id="game-hud">
-                <div class="hud-panel">
-                    <span class="hud-label">Score</span>
-                    <span class="hud-val" id="hud-score">0</span>
+                <!-- Game HUD (Floating elements) -->
+                <div id="game-hud">
+                    <div class="hud-panel">
+                        <span class="hud-label">Score</span>
+                        <span class="hud-val" id="hud-score">0</span>
+                    </div>
+                    <div class="hud-panel">
+                        <span class="hud-label">Speed</span>
+                        <span class="hud-val" id="hud-speed">50 mph</span>
+                    </div>
                 </div>
-                <div class="hud-panel">
-                    <span class="hud-label">Speed</span>
-                    <span class="hud-val" id="hud-speed">50 mph</span>
+
+                <!-- Start Menu Overlay -->
+                <div id="start-screen" class="menu-overlay active">
+                    <h1 class="gold-heading">CyberSteer</h1>
+                    <p class="subtitle">Hand-Controlled Highway Dodger</p>
+                    <p class="mode-help">Touch: tap arrows to change lanes. Hand Mode requires camera access.</p>
+                    <p id="camera-status" role="status" hidden></p>
+                    <div class="btn-container">
+                        <button id="btn-play-touch" class="cyber-btn primary">Play Touch</button>
+                        <button id="btn-play-hand" class="cyber-btn secondary">Play Hand Mode</button>
+                        <button id="btn-play-keyboard" class="cyber-btn secondary">Play Keyboard</button>
+                    </div>
+                </div>
+
+                <!-- Pause Modal Overlay -->
+                <div id="paused-screen" class="menu-overlay">
+                    <h2 class="gold-heading">Game Paused</h2>
+                    <p class="subtitle">Steering Locked</p>
+                    <div class="btn-container">
+                        <button id="btn-resume" class="cyber-btn primary">Resume</button>
+                        <button id="btn-pause-quit" class="cyber-btn secondary btn-quit-action">Quit to Menu</button>
+                    </div>
+                </div>
+
+                <!-- Game Over Screen Overlay -->
+                <div id="gameover-screen" class="menu-overlay">
+                    <h2 class="gold-heading" style="text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); margin-bottom: 8px;">Wrecked</h2>
+                    <p class="subtitle">Collision Detected</p>
+                    <div style="margin-bottom: 25px;">
+                        <span class="hud-label gold-heading" style="font-size: 0.65rem; display: block; margin-bottom: 6px;">Final Score:</span>
+                        <span id="over-score" style="font-size: 1.6rem; font-weight: 800; display: block; color: #ffffff; margin-bottom: 12px;">0</span>
+                        <span class="hud-label gold-heading" style="font-size: 0.65rem; display: block; margin-bottom: 6px;">High Score:</span>
+                        <span id="over-highscore" style="font-size: 1rem; display: block; color: #ffffff;">0</span>
+                    </div>
+                    <div class="btn-container">
+                        <button id="btn-restart" class="cyber-btn primary">Reboot Run</button>
+                        <button id="btn-over-quit" class="cyber-btn secondary btn-quit-action">Quit to Menu</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Start Menu Overlay -->
-            <div id="start-screen" class="menu-overlay active">
-                <h1 class="gold-heading">CyberSteer</h1>
-                <p class="subtitle">Hand-Controlled Highway Dodger</p>
-                <p style="color: #ffd700; font-size: 0.65rem; line-height: 1.5; margin-bottom: 24px;">Please turn on your camera to use hand control!</p>
-                <div class="btn-container">
-                    <button id="btn-play-hand" class="cyber-btn primary">Play Hand Mode</button>
-                    <button id="btn-play-keyboard" class="cyber-btn secondary">Play Keyboard</button>
-                </div>
+            <div id="touch-controls" role="group" aria-label="Driving controls" hidden>
+                <button id="btn-steer-left" class="cyber-btn" aria-label="Steer left one lane">&#9664; Left</button>
+                <button id="btn-touch-pause" class="cyber-btn secondary">Pause</button>
+                <button id="btn-steer-right" class="cyber-btn" aria-label="Steer right one lane">Right &#9654;</button>
             </div>
-
-            <!-- Pause Modal Overlay -->
-            <div id="paused-screen" class="menu-overlay">
-                <h2 class="gold-heading">Game Paused</h2>
-                <p class="subtitle">Steering Locked</p>
-                <div class="btn-container">
-                    <button id="btn-resume" class="cyber-btn primary">Resume</button>
-                    <button id="btn-pause-quit" class="cyber-btn secondary btn-quit-action">Quit to Menu</button>
-                </div>
-            </div>
-
-            <!-- Game Over Screen Overlay -->
-            <div id="gameover-screen" class="menu-overlay">
-                <h2 class="gold-heading" style="text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); margin-bottom: 8px;">Wrecked</h2>
-                <p class="subtitle">Collision Detected</p>
-                <div style="margin-bottom: 25px;">
-                    <span class="hud-label gold-heading" style="font-size: 0.65rem; display: block; margin-bottom: 6px;">Final Score:</span>
-                    <span id="over-score" style="font-size: 1.6rem; font-weight: 800; display: block; color: #ffffff; margin-bottom: 12px;">0</span>
-                    <span class="hud-label gold-heading" style="font-size: 0.65rem; display: block; margin-bottom: 6px;">High Score:</span>
-                    <span id="over-highscore" style="font-size: 1rem; display: block; color: #ffffff;">0</span>
-                </div>
-                <div class="btn-container">
-                    <button id="btn-restart" class="cyber-btn primary">Reboot Run</button>
-                    <button id="btn-over-quit" class="cyber-btn secondary btn-quit-action">Quit to Menu</button>
-                </div>
-            </div>
-        </div>
+        </main>
 
         <!-- Sidebar Panel for How to Play instructions & Live Webcam Feed -->
         <div id="control-sidebar">
@@ -87,7 +95,8 @@
                 <!-- How to Play instructions list -->
                 <div class="how-to-play-container">
                     <ul class="how-to-play-list">
-                        <li>Control car with hand or keyboard.</li>
+                        <li>Control car with touch, hand or keyboard.</li>
+                        <li>Touch: tap <strong>LEFT / RIGHT</strong> to change lanes; tap Pause to stop.</li>
                         <li>Move hand <strong>LEFT</strong> to steer left.</li>
                         <li>Move hand <strong>RIGHT</strong> to steer right.</li>
                         <li>Keep hand in <strong>CENTER</strong> to go straight.</li>

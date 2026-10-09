@@ -1,12 +1,14 @@
 # CyberSteer
 
-CyberSteer is a browser-based hand-controlled racing game built with HTML, CSS, and JavaScript. The player can control a car using hand movements through a webcam or use keyboard controls instead.
+CyberSteer is a browser-based hand-controlled racing game built with HTML, CSS, and JavaScript. The player can control a car using hand movements through a webcam or use keyboard and on-screen touch controls instead.
 
 ## Features
 
 - Real-time hand tracking using Google MediaPipe Hands
 - Webcam-based steering
 - Keyboard control mode
+- Touch controls for phones and tablets
+- Responsive canvas in portrait, landscape, and split-screen layouts
 - Three-lane highway gameplay
 - Cars, SUVs, pickup trucks, and semi-trucks as obstacles
 - Speed progression from 50 to 100 mph
@@ -44,6 +46,14 @@ Moving your hand between these zones moves the car between the three highway lan
 
 ## Controls
 
+### Touch Mode (phones and tablets)
+
+- Select **Play Touch**; no camera access is needed.
+- Tap Left or Right to move one lane per press.
+- Tap Pause, then Resume to continue.
+- Rotate the device freely. Rotation pauses an active run and preserves the score.
+- The game also pauses when the browser loses focus or goes into the background.
+
 ### Hand Mode
 
 - Move hand left: Left lane
@@ -60,7 +70,7 @@ Moving your hand between these zones moves the car between the three highway lan
 
 The HTML5 Canvas API is used to draw and animate the road, player car, traffic, lane markings, and collision effects.
 
-The game uses `requestAnimationFrame()` for its main animation loop and has four main states: MENU, PLAYING, PAUSED, and GAMEOVER.
+The game uses `requestAnimationFrame()` for its main animation loop and updates the game at a fixed 60 Hz so 30, 60, and 120 Hz displays keep the same gameplay speed. It has four main states: MENU, PLAYING, PAUSED, and GAMEOVER.
 
 Traffic is generated automatically while the game is running. The player earns one point whenever an obstacle vehicle is successfully avoided.
 
@@ -89,6 +99,20 @@ Then open:
 
 `http://localhost:8080`
 
-Allow camera access when prompted to use Hand Mode. Keyboard Mode can be played without hand tracking.
+Allow camera access when prompted to use Hand Mode. Touch and Keyboard Mode work without camera access or MediaPipe. Hand Mode downloads the existing MediaPipe libraries only when selected. If the camera or download is unavailable, the menu keeps Touch and Keyboard available.
 
 The project runs entirely in the browser and does not require a backend or database.
+
+## Browser regression checks
+
+The development-only browser checks use free Playwright; it is not a game dependency:
+
+```sh
+npm install --no-save playwright
+npx playwright install chromium
+node tests/mobile-playability.cjs
+```
+
+The checks cover nine phone, tablet, and desktop viewport sizes from 320x568 to 1366x900; touch steering; pause/resume; rotation and resizing; keyboard controls; collisions, scores, and restart; unavailable camera/CDN/storage; and 30/60/120 Hz game pacing. Hand steering is checked with camera/MediaPipe adapters, so physical webcam recognition and real iOS/Android devices still need a manual check.
+
+Set `CYBERSTEER_SCREENSHOTS` to a directory outside the repository to save layout screenshots.

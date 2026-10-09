@@ -21,10 +21,15 @@ let speedStage = 0;
 let stageTimer = 0;
 
 // High Score management
-let highScore = parseInt(localStorage.getItem('carDodgerHighScore') || '0');
+let highScore = 0;
+try {
+    highScore = parseInt(localStorage.getItem('carDodgerHighScore') || '0', 10) || 0;
+} catch (_) { /* Play still works when browser storage is unavailable. */ }
 
 // Input Settings
-let controlMode = 'KEYBOARD'; // 'KEYBOARD' or 'HAND'
+let controlMode = 'KEYBOARD'; // 'KEYBOARD', 'HAND' or 'TOUCH'
+let gameOverTimer;
+const touchControls = document.getElementById('touch-controls');
 
 // Road Design (Scaled for 470x630 canvas)
 const ROAD = {
@@ -66,35 +71,104 @@ const minSpawnInterval = 45;
 // Particle Explosions
 let particles = [];
 
-// Keyboard listener setup
-const keys = {};
+// Keyboard and touch share the existing one-lane steering actions.
 window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    
-    // State-independent hotkeys
+    const drivingKey = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'KeyP', 'Escape'].includes(e.code);
+    if (!drivingKey || (gameState !== STATES.PLAYING && gameState !== STATES.PAUSED)) return;
+    e.preventDefault();
     if (e.code === 'KeyP' || e.code === 'Escape') {
-        if (gameState === STATES.PLAYING) {
-            gameState = STATES.PAUSED;
-            showUIOverlay('paused-screen');
-        } else if (gameState === STATES.PAUSED) {
-            gameState = STATES.PLAYING;
-            hideUIOverlays();
-        }
-    }
-    
-    // Quick steering tests (Keyboard fallback)
-    if (gameState === STATES.PLAYING && controlMode === 'KEYBOARD') {
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-            steerLeft();
-        }
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-            steerRight();
-        }
+        if (!e.repeat) togglePause();
+    } else if (gameState === STATES.PLAYING && controlMode !== 'HAND') {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') steerLeft();
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') steerRight();
     }
 });
-window.addEventListener('keyup', (e) => {
-    keys[e.code] = false;
+
+function pauseGame() {
+    if (gameState !== STATES.PLAYING) return;
+    gameState = STATES.PAUSED;
+    showUIOverlay('paused-screen');
+    resetTouchInput();
+    syncTouchControls();
+}
+
+function resumeGame() {
+    if (gameState !== STATES.PAUSED) return;
+    gameState = STATES.PLAYING;
+    hideUIOverlays();
+    syncTouchControls();
+}
+
+function togglePause() {
+    if (gameState === STATES.PLAYING) pauseGame();
+    else resumeGame();
+}
+
+function resetTouchInput() {
+    touchControls.querySelectorAll('button').forEach(button => button.classList.remove('pressed'));
+}
+
+function syncTouchControls() {
+    touchControls.hidden = gameState === STATES.MENU || gameState === STATES.GAMEOVER;
+    document.getElementById('btn-steer-left').disabled = gameState !== STATES.PLAYING;
+    document.getElementById('btn-steer-right').disabled = gameState !== STATES.PLAYING;
+    document.getElementById('btn-touch-pause').textContent = gameState === STATES.PAUSED ? 'Resume' : 'Pause';
+}
+
+for (const [id, steer] of [['btn-steer-left', steerLeft], ['btn-steer-right', steerRight]]) {
+    const button = document.getElementById(id);
+    button.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || gameState !== STATES.PLAYING || controlMode === 'HAND') return;
+        e.preventDefault();
+        button.setPointerCapture(e.pointerId);
+        button.classList.add('pressed');
+        steer();
+    });
+    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+        button.addEventListener(event, () => button.classList.remove('pressed'));
+    }
+    // Keyboard/assistive activation produces a click without a pointer press.
+    button.addEventListener('click', e => {
+        if (e.detail === 0 && gameState === STATES.PLAYING && controlMode !== 'HAND') steer();
+    });
+    button.addEventListener('contextmenu', e => e.preventDefault());
+}
+document.getElementById('btn-touch-pause').addEventListener('click', togglePause);
+window.addEventListener('blur', pauseGame);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseGame();
 });
+
+// Browser chrome, split-screen and rotation change display size, never physics coordinates.
+function resizeLayout() {
+    const app = document.getElementById('app-container');
+    const padding = getComputedStyle(app);
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const horizontalPadding = parseFloat(padding.paddingLeft) + parseFloat(padding.paddingRight);
+    const verticalPadding = parseFloat(padding.paddingTop) + parseFloat(padding.paddingBottom);
+    const sideControls = matchMedia('(max-height: 500px) and (orientation: landscape)').matches;
+    let availableWidth = width - horizontalPadding;
+    if (width > 1000) availableWidth = (Math.min(width, 1020) - horizontalPadding - 24) / 2;
+    if (sideControls) availableWidth -= 126;
+    const availableHeight = height - verticalPadding - (sideControls ? 0 : 72);
+    const gameWidth = Math.max(1, Math.min(470, availableWidth, availableHeight * 470 / 630));
+    document.documentElement.style.setProperty('--game-width', gameWidth + 'px');
+    document.documentElement.style.setProperty('--game-height', gameWidth * 630 / 470 + 'px');
+}
+window.addEventListener('resize', resizeLayout);
+window.visualViewport?.addEventListener('resize', resizeLayout);
+const onOrientationChange = () => {
+    pauseGame();
+    resizeLayout();
+};
+if (window.screen.orientation?.addEventListener) {
+    window.screen.orientation.addEventListener('change', onOrientationChange);
+} else {
+    window.addEventListener('orientationchange', onOrientationChange);
+}
+resizeLayout();
 
 // Steering logic
 function steerLeft() {
@@ -555,16 +629,20 @@ function updateScoreHUD() {
 // End game logic
 function triggerGameOver(collidedEnemy) {
     gameState = STATES.GAMEOVER;
+    resetTouchInput();
+    syncTouchControls();
     createExplosion(player.x + player.width / 2, player.y + player.height / 2, player.color);
     createExplosion(collidedEnemy.x + collidedEnemy.width / 2, collidedEnemy.y + collidedEnemy.height / 2, collidedEnemy.color);
 
     // Save High Score
     if (player.score > highScore) {
         highScore = player.score;
-        localStorage.setItem('carDodgerHighScore', highScore.toString());
+        try {
+            localStorage.setItem('carDodgerHighScore', highScore.toString());
+        } catch (_) { /* Keep the score in memory when storage is blocked. */ }
     }
 
-    setTimeout(() => {
+    gameOverTimer = setTimeout(() => {
         document.getElementById('over-score').textContent = player.score;
         document.getElementById('over-highscore').textContent = highScore;
         showUIOverlay('gameover-screen');
@@ -596,9 +674,21 @@ function draw() {
     }
 }
 
-// Master Frame loop
-function frame() {
-    updateGame();
+// Fixed 60 Hz updates preserve desktop pacing on 30/60/120 Hz devices.
+let lastFrameTime;
+let frameAccumulator = 0;
+function frame(timestamp) {
+    const elapsed = lastFrameTime === undefined ? 0 : Math.min(50, timestamp - lastFrameTime);
+    lastFrameTime = timestamp;
+    if (gameState === STATES.PLAYING) {
+        frameAccumulator += elapsed;
+        while (frameAccumulator >= 1000 / 60) {
+            updateGame();
+            frameAccumulator -= 1000 / 60;
+        }
+    } else {
+        frameAccumulator = 0;
+    }
     draw();
     requestAnimationFrame(frame);
 }
@@ -617,42 +707,42 @@ function hideUIOverlays() {
     });
 }
 
-// Button Events / Action Links
-document.getElementById('btn-play-keyboard').addEventListener('click', async () => {
-    controlMode = 'KEYBOARD';
-    document.getElementById('control-mode-badge').textContent = 'Keyboard';
-    document.getElementById('control-mode-badge').className = 'badge keyboard';
-    
-    // Optional webcam background initialization for camera feed
-    const video = document.getElementById('webcam-video');
-    const overlay = document.getElementById('webcam-overlay');
-    if (window.handControl && video && overlay) {
-        window.handControl.init(video, overlay).then(ready => {
-            if (ready) window.handControl.start();
-        }).catch(() => {});
-    }
-    
+// Camera access is requested only for Hand Mode.
+function setControlMode(mode) {
+    controlMode = mode;
+    document.body.dataset.mode = mode;
+    const badge = document.getElementById('control-mode-badge');
+    badge.textContent = mode === 'HAND' ? 'Hand Mode' : mode === 'TOUCH' ? 'Touch' : 'Keyboard';
+    badge.className = 'badge ' + mode.toLowerCase();
+}
+
+function playWithoutCamera(mode) {
+    window.handControl?.stop();
+    setControlMode(mode);
     startGame();
-});
+}
+document.getElementById('btn-play-touch').addEventListener('click', () => playWithoutCamera('TOUCH'));
+document.getElementById('btn-play-keyboard').addEventListener('click', () => playWithoutCamera('KEYBOARD'));
 
 document.getElementById('btn-play-hand').addEventListener('click', async () => {
-    controlMode = 'HAND';
-    document.getElementById('control-mode-badge').textContent = 'Hand Mode';
-    document.getElementById('control-mode-badge').className = 'badge hand';
-    
-    const video = document.getElementById('webcam-video');
-    const overlay = document.getElementById('webcam-overlay');
-    
-    const ready = await window.handControl.init(video, overlay);
-    if (ready) {
-        window.handControl.start();
+    const modeButtons = document.querySelectorAll('#start-screen button');
+    const status = document.getElementById('camera-status');
+    modeButtons.forEach(button => { button.disabled = true; });
+    status.hidden = false;
+    status.textContent = 'Starting camera…';
+    try {
+        const ready = await window.handControl.init(
+            document.getElementById('webcam-video'), document.getElementById('webcam-overlay'));
+        if (!ready) throw new Error('Hand tracking is unavailable');
+        await window.handControl.start();
+        setControlMode('HAND');
+        status.hidden = true;
         startGame();
-    } else {
-        alert('Webcam hand-tracking could not start. Reverting to keyboard control.');
-        controlMode = 'KEYBOARD';
-        document.getElementById('control-mode-badge').textContent = 'Keyboard';
-        document.getElementById('control-mode-badge').className = 'badge keyboard';
-        startGame();
+    } catch (_) {
+        window.handControl?.stop();
+        status.textContent = 'Camera unavailable. Choose Play Touch or Play Keyboard.';
+    } finally {
+        modeButtons.forEach(button => { button.disabled = false; });
     }
 });
 
@@ -660,13 +750,13 @@ document.getElementById('btn-restart').addEventListener('click', () => {
     startGame();
 });
 
-document.getElementById('btn-resume').addEventListener('click', () => {
-    gameState = STATES.PLAYING;
-    hideUIOverlays();
-});
+document.getElementById('btn-resume').addEventListener('click', resumeGame);
 
 function quitToMenu() {
+    clearTimeout(gameOverTimer);
     gameState = STATES.MENU;
+    resetTouchInput();
+    syncTouchControls();
     if (window.handControl) {
         window.handControl.stop();
     }
@@ -685,6 +775,7 @@ function quitToMenu() {
     particles = [];
     player.reset();
     
+    document.getElementById('camera-status').hidden = true;
     showUIOverlay('start-screen');
 }
 
@@ -693,6 +784,8 @@ document.querySelectorAll('.btn-quit-action').forEach(btn => {
 });
 
 function startGame() {
+    clearTimeout(gameOverTimer);
+    frameAccumulator = 0;
     player.reset();
     enemies = [];
     particles = [];
@@ -705,18 +798,19 @@ function startGame() {
     stageTimer = 0;
     ROAD.speed = 5;
     
-    // Switch right sidebar to full in-game camera mode (hide instructions)
+    // Show the camera preview in Hand Mode and the controls guide otherwise.
     const sidebar = document.getElementById('control-sidebar');
     if (sidebar) sidebar.classList.add('in-game');
     const sidebarTitle = document.getElementById('sidebar-title');
-    if (sidebarTitle) sidebarTitle.textContent = (controlMode === 'HAND') ? 'Hand Control' : 'Camera Feed';
+    if (sidebarTitle) sidebarTitle.textContent = controlMode === 'HAND' ? 'Hand Control' : 'Driving Controls';
     
     const webcamContainer = document.getElementById('webcam-preview-container');
-    if (webcamContainer) webcamContainer.style.display = 'block';
+    if (webcamContainer) webcamContainer.style.display = controlMode === 'HAND' ? 'block' : 'none';
     
     updateScoreHUD();
     hideUIOverlays();
     gameState = STATES.PLAYING;
+    syncTouchControls();
 }
 
 // Real-time hook inside MediaPipe frame processor (Safely checking elements)
@@ -740,4 +834,4 @@ window.handControl.onFrame = () => {
 };
 
 // Fire master loop
-frame();
+requestAnimationFrame(frame);

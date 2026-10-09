@@ -1,4 +1,25 @@
 // Hand Tracking & Gesture Steering Module using MediaPipe Hands
+let handLibrariesPromise;
+function loadHandLibraries() {
+    if (typeof Hands !== 'undefined' && typeof Camera !== 'undefined') return Promise.resolve();
+    if (!handLibrariesPromise) {
+        handLibrariesPromise = Promise.all(['camera_utils/camera_utils.js', 'hands/hands.js'].map(path =>
+            new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                const timeout = setTimeout(() => {
+                    script.remove();
+                    reject(new Error('Hand tracking download timed out'));
+                }, 10000);
+                script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/' + path;
+                script.crossOrigin = 'anonymous';
+                script.onload = () => { clearTimeout(timeout); resolve(); };
+                script.onerror = () => { clearTimeout(timeout); script.remove(); reject(new Error('Hand tracking download failed')); };
+                document.head.appendChild(script);
+            })
+        )).catch(error => { handLibrariesPromise = null; throw error; });
+    }
+    return handLibrariesPromise;
+}
 
 const handControl = {
     isActive: false,
@@ -24,16 +45,13 @@ const handControl = {
 
     // Initialize webcam and MediaPipe Hands
     async init(videoEl, overlayCanvasEl) {
+        this.stop();
         this.videoElement = videoEl;
         this.canvasElement = overlayCanvasEl;
         this.canvasCtx = overlayCanvasEl.getContext('2d');
 
-        if (typeof Hands === 'undefined') {
-            console.error('MediaPipe Hands library is not loaded. Ensure CDN scripts are loaded in index.html.');
-            return false;
-        }
-
         try {
+            await loadHandLibraries();
             this.hands = new Hands({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
             });
@@ -64,15 +82,21 @@ const handControl = {
         }
     },
 
-    start() {
-        if (this.camera) {
-            this.isActive = true;
-            this.camera.start();
+    async start() {
+        if (!this.camera) throw new Error('Camera is not initialized');
+        this.isActive = true;
+        try {
+            await this.camera.start();
+        } catch (error) {
+            this.stop();
+            throw error;
         }
     },
 
     stop() {
         this.isActive = false;
+        this.handDetected = false;
+        this.currentZone = 'CENTER';
         if (this.camera) {
             this.camera.stop();
         }
