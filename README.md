@@ -108,11 +108,31 @@ The project runs entirely in the browser and does not require a backend or datab
 The development-only browser checks use free Playwright; it is not a game dependency:
 
 ```sh
-npm install --no-save playwright
-npx playwright install chromium
-node tests/mobile-playability.cjs
+npm ci
+npx playwright install chromium --only-shell
+npm test
+npm run test:browser
 ```
 
 The checks cover nine phone, tablet, and desktop viewport sizes from 320x568 to 1366x900; touch steering; pause/resume; rotation and resizing; keyboard controls; collisions, scores, and restart; unavailable camera/CDN/storage; and 30/60/120 Hz game pacing. Hand steering is checked with camera/MediaPipe adapters, so physical webcam recognition and real iOS/Android devices still need a manual check.
 
 Set `CYBERSTEER_SCREENSHOTS` to a directory outside the repository to save layout screenshots.
+
+## Steering and performance evidence
+
+`steering.js` separates landmark validation and lane hysteresis from the MediaPipe adapter. Invalid/incomplete landmarks are ignored. Unit fixtures cover mirroring, boundary jitter, deliberate lane changes, out-of-frame coordinates, and loss/reacquisition. They test steering logic, not recognition accuracy. CI runs these tests and the browser checks.
+
+```sh
+CYBERSTEER_BENCHMARK_OUTPUT=evaluation/render-benchmark.json node tests/render-benchmark.cjs
+```
+
+The saved benchmark measures Canvas JavaScript command submission for a paused synthetic scene with ten vehicles at three viewport sizes. It excludes GPU completion, simulation, camera inference and camera-to-control delay. Measurements near zero reflect browser timer resolution; they do not establish frame rate.
+
+### Physical-device check protocol
+
+1. Record device, OS, browser, viewport/orientation, camera resolution, and lighting. Run Touch, Keyboard, and Hand modes where available.
+2. Play for two minutes, rotate twice, pause/resume, hide/restore the tab, and restart after collision. Confirm the HUD and touch buttons stay reachable.
+3. Record frame intervals with browser developer tools; report p50/p95 and dropped frames with the device details. Use an external high-frame-rate recording to measure movement-to-visible-lane delay.
+4. Repeat center-boundary movements and hand loss/reacquisition under good and dim lighting. Count unintended lane switches and recognition failures. Do not label synthetic landmark tests as webcam accuracy.
+
+Real-device results have not been collected in this repository. No physical camera footage or personal video is included.

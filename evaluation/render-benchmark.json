@@ -1,0 +1,35 @@
+{
+  "fixture": "Paused synthetic scene, ten vehicles. Canvas JS command submission only; excludes GPU completion, physics and camera inference. Headless Chromium on local Mac.",
+  "runs": [
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "vehicles": 10,
+      "samples": 300,
+      "draw_submission_p50_ms": 0,
+      "draw_submission_p95_ms": 0.10000002384185791
+    },
+    {
+      "viewport": [
+        768,
+        1024
+      ],
+      "vehicles": 10,
+      "samples": 300,
+      "draw_submission_p50_ms": 0,
+      "draw_submission_p95_ms": 0.10000002384185791
+    },
+    {
+      "viewport": [
+        1366,
+        900
+      ],
+      "vehicles": 10,
+      "samples": 300,
+      "draw_submission_p50_ms": 0,
+      "draw_submission_p95_ms": 0.10000002384185791
+    }
+  ]
+}

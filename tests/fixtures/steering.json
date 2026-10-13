@@ -1,0 +1,9 @@
+{
+  "description":"Synthetic mirrored palm-coordinate sequences, not real webcam accuracy measurements.",
+  "cases":[
+    {"name":"center jitter stays centered","start":"CENTER","x":[0.50,0.40,0.37,0.36,0.38,0.40,0.50],"zones":["CENTER","CENTER","CENTER","CENTER","CENTER","CENTER","CENTER"]},
+    {"name":"left hysteresis resists boundary noise","start":"LEFT","x":[0.37,0.39,0.40,0.38,0.42,0.50],"zones":["LEFT","LEFT","LEFT","LEFT","CENTER","CENTER"]},
+    {"name":"right hysteresis resists boundary noise","start":"RIGHT","x":[0.63,0.61,0.60,0.62,0.58,0.50],"zones":["RIGHT","RIGHT","RIGHT","RIGHT","CENTER","CENTER"]},
+    {"name":"intentional steering crosses zones","start":"CENTER","x":[0.30,0.50,0.70,0.50,0.30],"zones":["LEFT","CENTER","RIGHT","CENTER","LEFT"]}
+  ]
+}
