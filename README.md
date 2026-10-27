@@ -1,111 +1,71 @@
-# CyberSteer
+# CyberSteer — Open Road Arcade
 
-CyberSteer is a browser-based hand-controlled racing game built with HTML, CSS, and JavaScript. The player can control a car using hand movements through a webcam or use keyboard and on-screen touch controls instead.
+A retro highway racer with a rear-view motorcycle/car camera, winding roads, three scenic locations, collectible coins and a vehicle garage. Play with touch controls, a keyboard, or webcam hand steering.
 
-## Features
+**[Play CyberSteer](https://swopnab.github.io/Hand-controlled-racing-simulation/)**
 
-- Real-time hand tracking using Google MediaPipe Hands
-- Webcam-based steering
-- Keyboard control mode
-- Touch controls for phones and tablets
-- Responsive canvas in portrait, landscape, and split-screen layouts
-- Three-lane highway gameplay
-- Cars, SUVs, pickup trucks, and semi-trucks as obstacles
-- Speed progression from 50 to 100 mph
-- Collision detection and particle effects
-- Score and high-score system
-- High score saved using LocalStorage
-- Pause, resume, restart, and quit options
-- Live webcam preview
-- Hand skeleton and steering zone visualization
-- Retro arcade-style interface
+## The open road
 
-## Technologies Used
+Choose a location on the starting screen:
 
-- HTML5
-- CSS3
-- JavaScript ES6+
-- HTML5 2D Canvas API
-- Google MediaPipe Hands ML
-- MediaPipe CameraUtils CDN
-- Browser LocalStorage
+- **Mountain pass:** alpine peaks, pine trees and green roadside hills.
+- **Coastal run:** ocean views, palms and a blue coastal sky.
+- **Canyon route:** warm desert terrain, mesas and cacti.
 
-## How Hand Control Works
+The road, scenery and rear-view vehicles use original procedural pixel artwork in `road-renderer.js`, inspired by classic 1990s road racers. There are no copied Road Rash assets or new asset-service dependencies. Graphics are generated and cached locally; no image download is needed for the landscape or vehicles.
 
-MediaPipe Hands uses the webcam to detect 21 landmarks on the player's hand. CyberSteer uses landmark 9, located near the center of the palm, to determine the horizontal position of the hand.
+## Coins and the garage
 
-The camera coordinates are mirrored so moving your hand right moves the car right.
+Drive into gold coins to collect them. Each coin adds **one** coin to your wallet and is removed immediately. Coin trails and new traffic avoid spawning on top of each other. The HUD shows coins collected this run; the header/garage shows the saved wallet. Collected coins remain in your wallet after a wreck or restart.
 
-The camera is divided into three steering zones:
+Open **Garage** to unlock and equip a ride:
 
-- LEFT: below 0.38
-- CENTER: 0.38 to 0.62
-- RIGHT: above 0.62
+| Ride | Cost |
+|---|---:|
+| Street rider motorcycle | Free starter |
+| Rally coupe | 40 coins |
+| Midnight GT | 100 coins |
+| Coast roadster | 180 coins |
 
-Moving your hand between these zones moves the car between the three highway lanes. A small hysteresis buffer is used to prevent unwanted lane switching when the hand is close to a zone boundary.
+Unlocking deducts coins once and equips the vehicle. Re-equipping an owned ride is free. These unlocks change the vehicle's appearance; all rides retain the same speed progression, steering and collision footprint. The garage explains this before purchase. Opening the garage during a run pauses it; closing the garage leaves the run paused until you explicitly resume.
+
+Coins, owned vehicles and equipped vehicle are saved under `cybersteerProgressV1` in this browser's localStorage. Existing high scores keep their original `carDodgerHighScore` key. There are no accounts, cross-device sync, real-money purchases, payment APIs or paid services. Clearing browser data clears saved progress. If storage is blocked/full, the current tab remains playable with an explicit message that progress is temporary. This is a local arcade economy, not a server-verified competitive balance.
 
 ## Controls
 
-### Touch Mode (phones and tablets)
+### Touch
 
-- Select **Play Touch**; no camera access is needed.
-- Tap Left or Right to move one lane per press.
-- Tap Pause, then Resume to continue.
-- Rotate the device freely. Rotation pauses an active run and preserves the score.
-- The game also pauses when the browser loses focus or goes into the background.
+Choose **Touch**. Tap Left or Right to change one steering lane per press; the middle button pauses/resumes. Rotate freely: rotation pauses the run and preserves its state. The camera adapts to portrait and landscape while the simulation stays unchanged. The game also pauses when the tab is hidden or loses focus.
 
-### Hand Mode
+### Keyboard
 
-- Move hand left: Left lane
-- Keep hand centered: Center lane
-- Move hand right: Right lane
+- **A / Left Arrow:** steer left.
+- **D / Right Arrow:** steer right.
+- **P / Escape:** pause/resume.
+- **Tab / Enter:** navigate and activate menu/garage controls.
+- **Escape inside Garage:** close the dialog while keeping the run paused.
 
-### Keyboard Mode
+### Hand camera
 
-- A or Left Arrow: Move left
-- D or Right Arrow: Move right
-- P or Escape: Pause or resume
+Choose **Hand cam**, allow the webcam, and move your hand left, center or right. The small live preview shows mirrored video, landmarks and steering zones. Camera/MediaPipe access is requested only for Hand mode; Touch and Keyboard work without them. If camera access or the model download fails, other modes stay available.
 
-## Game System
+The existing MediaPipe detector uses 21 landmarks, mirrored palm landmark 9, thresholds 0.38/0.62 and a 0.03 hysteresis buffer. Steering fixtures validate mirroring, boundary jitter, lane changes, malformed coordinates and tracking loss/reacquisition. They do not measure webcam-recognition accuracy.
 
-The HTML5 Canvas API is used to draw and animate the road, player car, traffic, lane markings, and collision effects.
+## Game rules
 
-The game uses `requestAnimationFrame()` for its main animation loop and updates the game at a fixed 60 Hz so 30, 60, and 120 Hz displays keep the same gameplay speed. It has four main states: MENU, PLAYING, PAUSED, and GAMEOVER.
+Avoid motorcycles, cars, SUVs, pickups and trucks. Passing a traffic vehicle earns one score point; coin collection is counted separately. A collision ends the run and shows score, high score and collected coins. Speed progresses automatically from **50 → 75 → 90 → 100 mph**, changing approximately every 15 seconds. All locations use the same rules.
 
-Traffic is generated automatically while the game is running. The player earns one point whenever an obstacle vehicle is successfully avoided.
+The simulation runs at a fixed 60 Hz, independent of the display refresh rate. The original 470×630 driving world handles steering, collisions and spawning; a separate perspective renderer draws it into a 960-pixel-wide canvas. Portrait mode increases the rendering height to use phone screens more effectively without stretching the actors or changing collision coordinates. Road curves are a visual projection over the existing three steering lanes.
 
-## Speed Progression
+## Run locally
 
-The game starts at 50 mph and gradually increases:
+```sh
+python3 -m http.server 8080 --bind 127.0.0.1
+```
 
-`50 -> 75 -> 90 -> 100 mph`
+Open **http://127.0.0.1:8080**. No backend or runtime package installation is needed. Hand mode loads the existing MediaPipe libraries/model from jsDelivr when requested. The landscapes, vehicle artwork, controls and garage use local files; no web font or third-party artwork is needed.
 
-The speed increases approximately every 15 seconds until reaching 100 mph, where it stays for the rest of the game.
-
-## Project Structure
-
-- `index.html` - Main page structure, game canvas, menus, and webcam elements
-- `style.css` - Game interface, layout, and visual styling
-- `game.js` - Main game engine, traffic, scoring, collisions, and speed
-- `handControl.js` - MediaPipe hand tracking and steering system
-
-## Running Locally
-
-Start a local web server:
-
-`python3 -m http.server 8080`
-
-Then open:
-
-`http://localhost:8080`
-
-Allow camera access when prompted to use Hand Mode. Touch and Keyboard Mode work without camera access or MediaPipe. Hand Mode downloads the existing MediaPipe libraries only when selected. If the camera or download is unavailable, the menu keeps Touch and Keyboard available.
-
-The project runs entirely in the browser and does not require a backend or database.
-
-## Browser regression checks
-
-The development-only browser checks use free Playwright; it is not a game dependency:
+## Development and verification
 
 ```sh
 npm ci
@@ -114,25 +74,34 @@ npm test
 npm run test:browser
 ```
 
-The checks cover nine phone, tablet, and desktop viewport sizes from 320x568 to 1366x900; touch steering; pause/resume; rotation and resizing; keyboard controls; collisions, scores, and restart; unavailable camera/CDN/storage; and 30/60/120 Hz game pacing. Hand steering is checked with camera/MediaPipe adapters, so physical webcam recognition and real iOS/Android devices still need a manual check.
+Playwright is free and development-only. CI runs the same unit and browser suites. Unit checks cover steering rules, world/camera projection, wallet validation, exact-price purchases, double-charge prevention, persistence and blocked/full storage. Browser checks cover:
 
-Set `CYBERSTEER_SCREENSHOTS` to a directory outside the repository to save layout screenshots.
+- Nine viewport sizes from 320×568 to 1366×900, including portrait/landscape rotation.
+- Touch/keyboard steering, pause, collision, restart, score persistence and background-tab pause.
+- Hand adapters, unavailable CDN/camera, pointer cancellation and 30/60/120 Hz game pacing.
+- Three distinct locations, actual coin pickup collisions, wrong-lane non-pickups, earning/unlocking/equipping a car, saved progress through reload and wreck/restart, garage dialog bounds and temporary progress when storage is unavailable.
 
-## Steering and performance evidence
-
-`steering.js` separates landmark validation and lane hysteresis from the MediaPipe adapter. Invalid/incomplete landmarks are ignored. Unit fixtures cover mirroring, boundary jitter, deliberate lane changes, out-of-frame coordinates, and loss/reacquisition. They test steering logic, not recognition accuracy. CI runs these tests and the browser checks.
+Set `CYBERSTEER_SCREENSHOTS` to a directory outside the repo to save visual-review screenshots.
 
 ```sh
 CYBERSTEER_BENCHMARK_OUTPUT=evaluation/render-benchmark.json node tests/render-benchmark.cjs
 ```
 
-The saved benchmark measures Canvas JavaScript command submission for a paused synthetic scene with ten vehicles at three viewport sizes. It excludes GPU completion, simulation, camera inference and camera-to-control delay. Measurements near zero reflect browser timer resolution; they do not establish frame rate.
+The benchmark is a paused synthetic scene with ten vehicles at three viewport sizes. It records native rendering dimensions and Canvas JavaScript command-submission timings; it excludes GPU completion, physics and camera inference. It is not evidence of physical-device frame rate or camera-to-control latency.
+
+## Project layout
+
+- `index.html`, `style.css`: responsive cabinet, menus, HUD, touch controls and garage.
+- `game.js`: fixed-step simulation, inputs, traffic/coin collisions, lifecycle and UI wiring.
+- `road-renderer.js`: road projection and cached original scenery/vehicle artwork.
+- `progression.js`: validated local wallet, unlocks and equipped-vehicle storage.
+- `steering.js`, `handControl.js`: pure steering rules and MediaPipe adapter.
+- `tests/`: unit, mobile/control, coin/garage and rendering checks.
+
+`documentation.html` and `CyberSteer_Documentation.pdf` are historical documentation snapshots that predate this road/coin/garage update; this README describes the current game.
 
 ### Physical-device check protocol
 
-1. Record device, OS, browser, viewport/orientation, camera resolution, and lighting. Run Touch, Keyboard, and Hand modes where available.
-2. Play for two minutes, rotate twice, pause/resume, hide/restore the tab, and restart after collision. Confirm the HUD and touch buttons stay reachable.
-3. Record frame intervals with browser developer tools; report p50/p95 and dropped frames with the device details. Use an external high-frame-rate recording to measure movement-to-visible-lane delay.
-4. Repeat center-boundary movements and hand loss/reacquisition under good and dim lighting. Count unintended lane switches and recognition failures. Do not label synthetic landmark tests as webcam accuracy.
+Record device, OS, browser, orientation, camera resolution and lighting. Play each route for two minutes, collect coins, unlock/equip a ride, rotate twice, background/restore the tab, and restart after a collision. Check that menus, HUD, garage and controls remain reachable. Measure frame intervals with developer tools and camera-to-visible-steering delay with external high-frame-rate footage. Repeat hand boundary movements and hand loss/reacquisition in different lighting.
 
-Real-device results have not been collected in this repository. No physical camera footage or personal video is included.
+Automated browser emulation and landmark fixtures do not establish support or recognition accuracy on every real iOS/Android device. No physical webcam footage or personal video is committed.

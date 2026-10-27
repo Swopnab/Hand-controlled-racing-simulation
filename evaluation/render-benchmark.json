@@ -1,35 +1,47 @@
 {
-  "fixture": "Paused synthetic scene, ten vehicles. Canvas JS command submission only; excludes GPU completion, physics and camera inference. Headless Chromium on local Mac.",
+  "fixture": "Paused scenic/perspective scene, ten vehicles. Canvas JS command submission only; excludes GPU completion, physics and camera inference. Headless Chromium on local Mac.",
   "runs": [
     {
       "viewport": [
         390,
         844
       ],
+      "render_canvas": [
+        960,
+        1050
+      ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0,
-      "draw_submission_p95_ms": 0.10000002384185791
+      "draw_submission_p50_ms": 0.19999998807907104,
+      "draw_submission_p95_ms": 0.30000001192092896
     },
     {
       "viewport": [
         768,
         1024
       ],
+      "render_canvas": [
+        960,
+        600
+      ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0,
-      "draw_submission_p95_ms": 0.10000002384185791
+      "draw_submission_p50_ms": 0.19999998807907104,
+      "draw_submission_p95_ms": 0.30000001192092896
     },
     {
       "viewport": [
         1366,
         900
       ],
+      "render_canvas": [
+        960,
+        600
+      ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0,
-      "draw_submission_p95_ms": 0.10000002384185791
+      "draw_submission_p50_ms": 0.19999998807907104,
+      "draw_submission_p95_ms": 0.30000001192092896
     }
   ]
 }
