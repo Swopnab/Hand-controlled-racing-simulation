@@ -12,7 +12,7 @@ const server = http.createServer(async (req, res) => {
     if (!file.startsWith(root + path.sep) && file !== root) { res.writeHead(403).end(); return; }
     try {
         const target = file === root ? path.join(root, 'index.html') : file;
-        const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.jpg': 'image/jpeg' };
+        const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.jpg': 'image/jpeg', '.ttf':'font/ttf' };
         res.setHeader('Content-Type', mime[path.extname(target)] || 'application/octet-stream');
         res.end(await fs.readFile(target));
     } catch { res.writeHead(404).end(); }

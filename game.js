@@ -223,7 +223,7 @@ function resizeLayout() {
     footerHeight -
     hudHeight -
     (sideways ? 18 : 102);
-  const renderHeight =
+  const desiredRenderHeight =
     !sideways && width <= 600
       ? Math.round(
           Math.min(
@@ -235,6 +235,7 @@ function resizeLayout() {
           ),
         )
       : 600;
+  const renderHeight = Math.round(desiredRenderHeight / 3) * 3;
   CyberRoad.VIEW.height = renderHeight;
   CyberRoad.VIEW.horizon = Math.round(renderHeight * 0.31);
   if (canvas.height !== renderHeight) canvas.height = renderHeight;
@@ -612,6 +613,7 @@ function draw() {
       },
       ROAD.distance,
     );
+    renderer.present(ctx);
     return;
   }
   const actors = [
@@ -630,6 +632,7 @@ function draw() {
     else drawEnemyCar(actor.entity);
   }
   renderer.particles(ctx, particles, ROAD.distance);
+  renderer.present(ctx);
 }
 
 // Fixed 60 Hz updates preserve desktop pacing on 30/60/120 Hz devices.
@@ -833,7 +836,7 @@ function updateProgressHUD() {
   document.getElementById("garage-coins").textContent = saved.coins;
   document.getElementById("hud-ride").textContent = activeRide.name;
   document.getElementById("progress-status").textContent = saved.persistent
-    ? "Coins & rides saved on this device."
+    ? "Progress saved locally."
     : "Storage unavailable. Progress lasts in this tab.";
 }
 function renderGarage() {
