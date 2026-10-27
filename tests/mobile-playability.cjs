@@ -267,67 +267,70 @@ async function screenshot(page, name) {
     await page.locator("#btn-play-hand").click();
     assert.equal((await state(page)).mode, "HAND");
     assert.equal(await page.evaluate(() => handControl.isActive), true);
-    for (const direction of ["LEFT", "CENTER", "RIGHT"]) {
+    assert.equal(await page.evaluate(() => handControl.ready), false);
+    const waitingDistance = await page.evaluate(() => ROAD.distance);
+    await page.waitForTimeout(80);
+    assert.equal(
+      await page.evaluate(() => ROAD.distance),
+      waitingDistance,
+      "Race waits for neutral calibration",
+    );
+    async function feed(pose, times = 6) {
       await page.evaluate(
-        (landmarks) => {
+        ({ pose, times }) => {
           enemySpawnTimer = -100000;
-          handControl.onResults({
-            image: canvas,
-            multiHandLandmarks: [landmarks],
-          });
-          handleHandSteering();
+          for (let i = 0; i < times; i++) {
+            handControl.onResults({
+              image: canvas,
+              multiHandLandmarks: [pose],
+            });
+            handleHandSteering();
+          }
         },
-        hand("Index", direction),
-      );
-      assert.equal(
-        (await state(page)).lane,
-        { LEFT: 0, CENTER: 1, RIGHT: 2 }[direction],
+        { pose, times },
       );
     }
-    await page.evaluate(
-      (landmarks) => {
-        handControl.onResults({
-          image: canvas,
-          multiHandLandmarks: [landmarks],
-        });
-        handleHandSteering();
-      },
-      hand("Index", "RIGHT", -0.2),
-    );
-    assert.equal((await state(page)).lane, 2, "Moving the palm does not steer");
-    await page.evaluate(
-      (landmarks) => {
-        handControl.onResults({
-          image: canvas,
-          multiHandLandmarks: [landmarks],
-        });
-        handleHandSteering();
-      },
-      hand("Middle", "LEFT"),
-    );
-    assert.equal(
-      (await state(page)).lane,
-      0,
-      "Another raised finger can steer",
-    );
+    for (const finger of ["Index", "Middle", "Ring", "Little", "Thumb"]) {
+      await page.evaluate((finger) => handControl.setFinger(finger), finger);
+      const neutral = hand(finger, "CENTER");
+      await feed(neutral);
+      assert.equal(await page.evaluate(() => handControl.ready), true);
+      const tip = { Index: 8, Middle: 12, Ring: 16, Little: 20, Thumb: 4 }[
+        finger
+      ];
+      for (const [dx, lane] of [
+        [0.08, 0],
+        [0, 1],
+        [-0.08, 2],
+      ]) {
+        const pose = structuredClone(neutral);
+        pose[tip].x += dx;
+        await feed(pose);
+        assert.equal(
+          (await state(page)).lane,
+          lane,
+          `${finger} fingertip movement selects lane`,
+        );
+      }
+      await feed(hand(finger, "CENTER", -0.2));
+      assert.equal(
+        (await state(page)).lane,
+        1,
+        "Moving the palm does not steer",
+      );
+    }
     await page.evaluate(() => {
       handControl.onResults({ image: canvas, multiHandLandmarks: [] });
       handleHandSteering();
     });
     assert.equal(
       (await state(page)).lane,
-      0,
+      1,
       "Tracking loss holds the current lane",
     );
-    await page.evaluate((landmarks) => {
-      handControl.onResults({ image: canvas, multiHandLandmarks: [landmarks] });
-      handleHandSteering();
-    }, hand(null));
-    assert.equal(
-      (await state(page)).lane,
-      1,
-      "A closed hand returns to center",
-    );
+    await page.locator("#btn-center-finger").click();
+    assert.equal(await page.evaluate(() => handControl.ready), false);
+    await feed(hand("Thumb", "CENTER"));
     await fits(page, "#webcam-preview-container", 1366, 900);
     await screenshot(page, "desktop-hand");
     await page.keyboard.press("Escape");

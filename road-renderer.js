@@ -1,6 +1,13 @@
 /* Fixed-resolution arcade renderer. Driving/collision coordinates remain 470x630. */
 (function (root) {
   const WORLD = { width: 470, height: 630, roadX: 75, roadWidth: 320 };
+  const LANE_CENTERS = Object.freeze(
+    Array.from(
+      { length: 3 },
+      (_, i) => WORLD.roadX + ((i + 0.5) * WORLD.roadWidth) / 3,
+    ),
+  );
+  const LANE_MARKERS = Object.freeze([-1 / 3, 1 / 3]);
   const VIEW = { width: 960, height: 600, horizon: 186, pixelScale: 3 };
   const ROUTES = Object.freeze({
     mountain: {
@@ -378,14 +385,14 @@
           Math.max(1, Math.round(half * 0.006)),
           1,
         );
-        // Broad carriageway: a center pair, with dashed white passing-lane marks.
+        // Three same-direction lanes: yellow left edge, white dashed dividers.
         const line = Math.max(1, Math.round(half * 0.008));
         g.fillStyle = "#e7cc58";
-        g.fillRect(center - line * 2, y, line, 1);
-        g.fillRect(center + line, y, line, 1);
+        g.fillRect(center - half + line * 2, y, line, 1);
+        g.fillRect(center - half + line * 4, y, line, 1);
         if (stripe) {
           g.fillStyle = "#dddccf";
-          for (const lane of [-0.52, 0.52])
+          for (const lane of LANE_MARKERS)
             g.fillRect(Math.round(center + lane * half), y, line, 1);
         }
       }
@@ -496,6 +503,8 @@
   }
   const api = {
     WORLD,
+    LANE_CENTERS,
+    LANE_MARKERS,
     VIEW,
     ROUTES,
     COURSE,

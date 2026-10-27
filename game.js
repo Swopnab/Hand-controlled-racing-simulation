@@ -27,10 +27,10 @@ const STATES = {
 
 let gameState = STATES.MENU;
 
-// Speed Progression (50 -> 75 -> 90 -> 100 mph max)
-const SPEED_STAGES = [50, 75, 90, 100];
-let currentSpeedMph = 50;
-let targetSpeedMph = 50;
+// Speed Progression (100 -> 150 -> 180 -> 200 mph max)
+const SPEED_STAGES = [100, 150, 180, 200];
+let currentSpeedMph = 100;
+let targetSpeedMph = 100;
 let speedStage = 0;
 let stageTimer = 0;
 
@@ -52,10 +52,10 @@ const touchControls = document.getElementById("touch-controls");
 const ROAD = {
   x: 75,
   width: 320,
-  lanes: [128, 235, 342], // Center X of each lane
+  lanes: CyberRoad.LANE_CENTERS, // Shared with the painted lane dividers
   laneWidth: 107,
-  speed: 5,
-  maxSpeed: 10,
+  speed: 10,
+  maxSpeed: 20,
   offset: 0,
   distance: 0,
 };
@@ -69,7 +69,7 @@ const player = {
   width: 32,
   height: 62,
   color: "#00f2fe",
-  lerpSpeed: 0.18, // Smoothness of steering
+  lerpSpeed: 0.28, // Smoothness of steering
   score: 0,
   reset() {
     this.lane = 1;
@@ -83,8 +83,8 @@ const player = {
 // Enemies List
 let enemies = [];
 let enemySpawnTimer = 0;
-let enemySpawnInterval = 120;
-const minSpawnInterval = 45;
+let enemySpawnInterval = 60;
+const minSpawnInterval = 30;
 
 // Particle Explosions
 let particles = [];
@@ -356,7 +356,7 @@ function spawnEnemy() {
     width: width,
     height: height,
     color: color,
-    speed: ROAD.speed + speedOffset + (Math.random() * 1.5 - 0.5),
+    relativeSpeed: 0.9 + speedOffset / 10 + Math.random() * 0.2,
     lane: lane,
     type: type,
   });
@@ -456,11 +456,14 @@ function updateCoins() {
 function updateGame() {
   if (gameState !== STATES.PLAYING) return;
 
+  // Wait for a stable neutral finger pose before the first traffic approaches.
+  if (controlMode === "HAND" && !window.handControl.ready) return;
+
   // 1. Move road to simulate speed
   ROAD.offset = (ROAD.offset + ROAD.speed) % 70;
   ROAD.distance += ROAD.speed;
 
-  // 2. Gradual Speed Progression (50 -> 75 -> 90 -> 100 mph max)
+  // 2. Gradual Speed Progression (100 -> 150 -> 180 -> 200 mph max)
   if (speedStage < 3) {
     stageTimer += 1 / 60;
     if (stageTimer >= 15) {
@@ -472,15 +475,15 @@ function updateGame() {
 
   // Smooth transition between speed levels
   currentSpeedMph += (targetSpeedMph - currentSpeedMph) * 0.015;
-  if (currentSpeedMph > 100) currentSpeedMph = 100;
+  if (currentSpeedMph > 200) currentSpeedMph = 200;
 
-  // Map current mph to road speed (50 mph = 5, 100 mph = 10)
+  // Actual motion is doubled: 100 mph = 10 world units per tick, 200 = 20.
   ROAD.speed = (currentSpeedMph / 50) * 5;
 
   // Dynamic spawn interval based on score
   enemySpawnInterval = Math.max(
     minSpawnInterval,
-    120 - Math.floor(player.score / 5),
+    60 - Math.floor(player.score / 3),
   );
 
   // 3. Interpolate player steering
@@ -492,7 +495,7 @@ function updateGame() {
   }
 
   coinSpawnTimer++;
-  if (coinSpawnTimer >= 90) {
+  if (coinSpawnTimer >= 55) {
     spawnCoins();
     coinSpawnTimer = 0;
   }
@@ -508,7 +511,10 @@ function updateGame() {
   // 6. Update enemies
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
-    enemy.y += enemy.speed;
+    enemy.y +=
+      enemy.relativeSpeed === undefined
+        ? enemy.speed
+        : ROAD.speed * enemy.relativeSpeed;
 
     // Collision Check
     if (checkCollision(player, enemy)) {
@@ -536,7 +542,8 @@ function updateScoreHUD() {
   document.getElementById("hud-score").textContent = player.score;
   document.getElementById("hud-speed").textContent =
     Math.round(currentSpeedMph) + " mph";
-  document.getElementById("speed-fill").style.width = currentSpeedMph + "%";
+  document.getElementById("speed-fill").style.width =
+    (currentSpeedMph / 200) * 100 + "%";
   document.getElementById("hud-coins").textContent = runCoins;
 }
 
@@ -759,16 +766,17 @@ function startGame() {
   clearTimeout(gameOverTimer);
   frameAccumulator = 0;
   player.reset();
+  if (controlMode === "HAND") window.handControl.recenter();
   enemies = [];
   particles = [];
   enemySpawnTimer = 0;
-  enemySpawnInterval = 120;
+  enemySpawnInterval = 60;
 
-  currentSpeedMph = 50;
-  targetSpeedMph = 50;
+  currentSpeedMph = 100;
+  targetSpeedMph = 100;
   speedStage = 0;
   stageTimer = 0;
-  ROAD.speed = 5;
+  ROAD.speed = 10;
   ROAD.distance = 0;
   ROAD.offset = 0;
   coins = [];
