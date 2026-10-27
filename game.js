@@ -577,45 +577,33 @@ function triggerGameOver(collidedEnemy) {
 // Master Render loop
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawRoad();
   if (gameState === STATES.MENU) {
-    renderer.vehicle(
-      ctx,
-      {
-        ...player,
-        x: ROAD.lanes[0] - 16,
-        type: activeRide.kind,
-        color: activeRide.color,
-      },
-      ROAD.distance,
-    );
-    renderer.vehicle(
-      ctx,
-      {
-        x: ROAD.lanes[1] - 18,
-        y: 220,
-        width: 36,
-        height: 68,
-        type: "SUV",
-        color: "#d6c7b8",
-      },
-      ROAD.distance,
-    );
-    renderer.vehicle(
-      ctx,
-      {
-        x: ROAD.lanes[0] - 16,
-        y: 60,
-        width: 32,
-        height: 62,
-        type: "BIKE",
-        color: "#6c6da8",
-      },
-      ROAD.distance,
-    );
-    renderer.present(ctx);
+    // Preserve the original top-down road backdrop on the starting screen.
+    // The new perspective renderer is reserved for an active/paused/finished race.
+    ctx.save();
+    ctx.scale(canvas.width / 470, canvas.height / 630);
+    ctx.fillStyle = "#1e3a1f";
+    ctx.fillRect(0, 0, 470, 630);
+    ctx.fillStyle = "#22252a";
+    ctx.fillRect(75, 0, 320, 630);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(73, 0, 4, 630);
+    ctx.fillRect(393, 0, 4, 630);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([30, 40]);
+    for (const x of [75 + 320 / 3, 75 + (320 * 2) / 3]) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 630);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(10,15,26,0.6)";
+    ctx.fillRect(0, 0, 470, 630);
+    ctx.restore();
     return;
   }
+  drawRoad();
   const actors = [
     ...enemies.map((entity) => ({ entity, kind: "vehicle" })),
     ...coins.map((entity) => ({ entity, kind: "coin" })),

@@ -953,3 +953,127 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/* Original CyberSteer presentation. Racing artwork remains in the game canvas. */
+:root {
+  --gold: #ffd700;
+  --cream: #ffffff;
+  --primary: #00f2fe;
+}
+body {
+  background: #000 url("background.jpg") center center / cover no-repeat fixed;
+  color: #ffffff;
+}
+.masthead,
+.road-footer {
+  background: rgba(6, 8, 16, 0.82);
+  padding-inline: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.brand,
+.gold-heading,
+.menu-card h1,
+h2 {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+#game-window-wrapper {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(6, 8, 16, 0.82);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+}
+.menu-overlay {
+  background: rgba(6, 8, 16, 0.88);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.menu-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.menu-card h1 {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+.menu-card .subtitle {
+  font-size: 8px;
+  color: white;
+  line-height: 1.8;
+}
+#start-screen .btn-container {
+  flex-direction: column;
+  max-width: 320px;
+  margin-inline: auto;
+  gap: 12px;
+}
+.cyber-btn,
+.route-choice,
+.garage-button,
+.close-button {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #475569;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
+}
+.cyber-btn.primary,
+.route-choice.active {
+  background: linear-gradient(135deg, #00f2fe, #4facfe);
+  border-color: transparent;
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
+}
+.cyber-btn:hover,
+.route-choice:hover,
+.garage-button:hover {
+  border-color: #94a3b8;
+  background: rgba(255, 255, 255, 0.15);
+}
+.cyber-btn.primary:hover,
+.route-choice.active:hover {
+  background: #4facfe;
+  color: #000;
+}
+#game-hud,
+dialog {
+  background: rgba(6, 8, 16, 0.94);
+}
+.hud-label {
+  color: #ffd700;
+}
+#app-container:is(:fullscreen, :-webkit-full-screen, .expanded) {
+  background: #000 url("background.jpg") center center / cover no-repeat;
+}
+@media (max-width: 600px) {
+  .masthead {
+    padding-inline: 6px;
+  }
+  #start-screen .btn-container {
+    gap: 8px;
+  }
+  .menu-card {
+    padding: 12px 10px;
+  }
+  .menu-card h1 {
+    margin-bottom: 10px;
+  }
+  .route-selector {
+    margin-bottom: 12px;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  #start-screen .btn-container {
+    flex-direction: row;
+    max-width: none;
+    gap: 5px;
+  }
+  .menu-card {
+    padding: 8px;
+  }
+  .menu-card .subtitle {
+    display: none;
+  }
+  .menu-card h1 {
+    margin-bottom: 8px;
+  }
+}
