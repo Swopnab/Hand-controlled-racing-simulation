@@ -12,8 +12,8 @@
       ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0.19999998807907104,
-      "draw_submission_p95_ms": 0.30000001192092896
+      "draw_submission_p50_ms": 0.6000000238418579,
+      "draw_submission_p95_ms": 0.699999988079071
     },
     {
       "viewport": [
@@ -26,8 +26,8 @@
       ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0.19999998807907104,
-      "draw_submission_p95_ms": 0.30000001192092896
+      "draw_submission_p50_ms": 0.3999999761581421,
+      "draw_submission_p95_ms": 0.5
     },
     {
       "viewport": [
@@ -40,8 +40,8 @@
       ],
       "vehicles": 10,
       "samples": 300,
-      "draw_submission_p50_ms": 0.19999998807907104,
-      "draw_submission_p95_ms": 0.30000001192092896
+      "draw_submission_p50_ms": 0.3999999761581421,
+      "draw_submission_p95_ms": 0.5
     }
   ]
 }

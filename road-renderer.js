@@ -1,50 +1,71 @@
-/* Original procedural pixel art. World coordinates stay separate from the camera. */
+/* Fixed-resolution arcade renderer. Driving/collision coordinates remain 470x630. */
 (function (root) {
   const WORLD = { width: 470, height: 630, roadX: 75, roadWidth: 320 };
-  const VIEW = { width: 960, height: 600, horizon: 186 };
+  const VIEW = { width: 960, height: 600, horizon: 186, pixelScale: 3 };
   const ROUTES = Object.freeze({
     mountain: {
       name: "Mountain pass",
-      subtitle: "Alpine turns",
-      sky: ["#7994df", "#a5b9ed", "#d7e3f5"],
-      grass: ["#708451", "#687c49"],
-      mountain: "#a4a6b7",
-      shoulder: "#9c8666",
+      sky: "#839be7",
+      skyLow: "#b2c3ef",
+      grass: ["#527c3e", "#5d8848"],
+      mountain: "#8a90a8",
+      shoulder: "#a18b62",
       trees: "pine",
     },
     coast: {
       name: "Coastal run",
-      subtitle: "Ocean highway",
-      sky: ["#74b3e5", "#b1d8e9", "#deeee9"],
-      grass: ["#88a76a", "#80a063"],
-      mountain: "#7ca1a0",
-      shoulder: "#c0aa7b",
+      sky: "#70a9e0",
+      skyLow: "#b0d4e7",
+      grass: ["#5c9753", "#70a05b"],
+      mountain: "#71938e",
+      shoulder: "#cfb580",
       trees: "palm",
     },
     desert: {
       name: "Canyon route",
-      subtitle: "Desert miles",
-      sky: ["#82a1dd", "#bfc8e3", "#f4dec3"],
-      grass: ["#b18a5b", "#aa8053"],
-      mountain: "#b57d68",
-      shoulder: "#d6b27c",
+      sky: "#889fdb",
+      skyLow: "#c8cce3",
+      grass: ["#b48c5a", "#c09a65"],
+      mountain: "#a16d59",
+      shoulder: "#d6b77d",
       trees: "cactus",
     },
   });
+  // A looping course with deliberate straight rests between right and left turns.
+  const COURSE = Object.freeze([
+    { length: 3000, turn: 0 },
+    { length: 2400, turn: 1 },
+    { length: 2600, turn: 0 },
+    { length: 2600, turn: -1 },
+    { length: 3000, turn: 0 },
+    { length: 2200, turn: 0.75 },
+    { length: 2000, turn: 0 },
+    { length: 2400, turn: -0.8 },
+  ]);
+  const courseLength = COURSE.reduce((sum, s) => sum + s.length, 0);
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+  function courseTurn(distance = 0) {
+    let local = ((distance % courseLength) + courseLength) % courseLength;
+    for (const section of COURSE) {
+      if (local < section.length)
+        return section.turn * Math.sin((Math.PI * local) / section.length);
+      local -= section.length;
+    }
+    return 0;
+  }
   function roadCenter(t, distance = 0) {
-    return (
-      VIEW.width / 2 +
-      (Math.sin(distance * 0.0008 + t * 4.5 + 1.1) * 190 +
-        Math.sin(distance * 0.0003 + t * 9) * 38) *
-        Math.pow(1 - t, 2)
-    );
+    const remaining = 1 - clamp(t, 0, 1),
+      ahead = Math.pow(remaining, 1.4) * 2200;
+    let curvature = 0;
+    for (let i = 0; i < 8; i++)
+      curvature += courseTurn(distance + (ahead * (i + 0.5)) / 8) / 8;
+    return VIEW.width / 2 + curvature * 240 * Math.pow(remaining, 1.8);
   }
   function roadPoint(t, distance = 0) {
     return {
       x: roadCenter(t, distance),
       y: VIEW.horizon + (VIEW.height - VIEW.horizon) * Math.pow(t, 2.1),
-      half: 9 + Math.pow(t, 1.45) * 570,
+      half: 12 + Math.pow(t, 1.05) * 590,
     };
   }
   function project(x, y, distance = 0) {
@@ -66,544 +87,423 @@
     c.height = h;
     return c;
   }
-  function polygon(ctx, color, points) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(...points[0]);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(...points[i]);
-    ctx.closePath();
-    ctx.fill();
+  // Integer scan conversion avoids antialiased polygon edges in the artwork.
+  function polygon(g, color, points) {
+    g.fillStyle = color;
+    const min = Math.floor(Math.min(...points.map((p) => p[1]))),
+      max = Math.ceil(Math.max(...points.map((p) => p[1])));
+    for (let y = min; y < max; y++) {
+      const crossings = [];
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i],
+          b = points[(i + 1) % points.length];
+        if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y))
+          crossings.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
+      }
+      crossings.sort((a, b) => a - b);
+      for (let i = 0; i + 1 < crossings.length; i += 2)
+        g.fillRect(
+          Math.ceil(crossings[i]),
+          y,
+          Math.floor(crossings[i + 1]) - Math.ceil(crossings[i]) + 1,
+          1,
+        );
+    }
   }
-  function sprite(kind, color) {
-    const c = makeCanvas(48, 76),
+  function bitmap(rows, palette, lean = 0) {
+    const width = Math.max(...rows.map((r) => r.length)),
+      c = makeCanvas(width + 8, rows.length),
       g = c.getContext("2d");
-    const rect = (x, y, w, h, fill) => {
-      g.fillStyle = fill;
-      g.fillRect(x, y, w, h);
-    };
-    if (kind === "BIKE") {
-      rect(19, 51, 11, 24, "#171b24");
-      rect(21, 53, 7, 21, "#2c3040");
-      rect(23, 55, 2, 17, "#414557");
-      rect(12, 35, 25, 24, "#3a2442");
-      rect(14, 37, 21, 17, color);
-      rect(11, 44, 5, 15, "#8e294c");
-      rect(34, 44, 4, 18, "#aa9ba8");
-      rect(35, 47, 2, 13, "#e2e2d9");
-      rect(16, 51, 17, 5, "#e94c44");
-      rect(19, 52, 11, 2, "#ff9973");
-      rect(18, 58, 14, 4, "#e4dfc4");
-      rect(22, 59, 6, 2, "#3c4151");
-      polygon(g, "#202534", [
-        [15, 30],
-        [21, 32],
-        [18, 47],
-        [14, 56],
-        [8, 56],
-        [11, 43],
-      ]);
-      polygon(g, "#30384d", [
-        [30, 30],
-        [36, 33],
-        [36, 48],
-        [40, 56],
-        [34, 57],
-        [29, 45],
-      ]);
-      polygon(g, color, [
-        [16, 14],
-        [31, 14],
-        [35, 30],
-        [30, 39],
-        [17, 37],
-        [12, 27],
-      ]);
-      rect(18, 17, 11, 5, "#ffffff33");
-      rect(19, 23, 11, 10, "#00000022");
-      polygon(g, "#dc596e", [
-        [15, 17],
-        [18, 23],
-        [11, 30],
-        [7, 34],
-        [4, 31],
-        [9, 24],
-      ]);
-      polygon(g, "#ed7792", [
-        [31, 16],
-        [35, 19],
-        [37, 27],
-        [44, 29],
-        [43, 33],
-        [34, 30],
-        [29, 24],
-      ]);
-      rect(2, 30, 7, 4, "#222635");
-      rect(40, 29, 7, 4, "#222635");
-      rect(5, 34, 6, 2, "#8b929c");
-      polygon(g, "#d8c49c", [
-        [18, 2],
-        [28, 1],
-        [34, 7],
-        [33, 16],
-        [28, 20],
-        [19, 18],
-        [14, 11],
-      ]);
-      rect(19, 3, 10, 3, "#f8e6b6");
-      rect(16, 9, 4, 7, "#989da6");
-      rect(21, 7, 12, 7, "#384358");
-      rect(24, 8, 8, 2, "#7c91a2");
-      rect(20, 16, 9, 3, "#b3a384");
-    } else {
-      rect(6, 46, 7, 27, "#171b24");
-      rect(36, 46, 7, 27, "#171b24");
-      rect(8, 50, 3, 20, "#343741");
-      rect(38, 50, 3, 20, "#343741");
-      polygon(g, "#222737", [
-        [8, 25],
-        [14, 12],
-        [33, 12],
-        [40, 25],
-        [44, 55],
-        [41, 68],
-        [7, 68],
-        [4, 55],
-      ]);
-      polygon(g, color, [
-        [9, 27],
-        [15, 13],
-        [32, 13],
-        [39, 27],
-        [42, 56],
-        [40, 64],
-        [8, 64],
-        [6, 56],
-      ]);
-      polygon(g, "#b3bfcd", [
-        [15, 16],
-        [32, 16],
-        [36, 29],
-        [11, 29],
-      ]);
-      polygon(g, "#293b50", [
-        [16, 18],
-        [30, 18],
-        [33, 27],
-        [14, 27],
-      ]);
-      rect(16, 19, 13, 2, "#728da1");
-      rect(10, 33, 28, 17, color);
-      rect(12, 34, 3, 15, "#ffffff44");
-      rect(35, 34, 3, 15, "#11182733");
-      rect(7, 51, 34, 9, "#30323c");
-      rect(8, 53, 9, 4, "#f05f44");
-      rect(32, 53, 8, 4, "#f05f44");
-      rect(20, 53, 9, 4, "#e2dec1");
-      rect(5, 63, 38, 3, "#b4b8bb");
-      rect(12, 67, 5, 3, "#666974");
-      rect(32, 67, 5, 3, "#666974");
-      if (kind === "TRUCK" || kind === "SUV") {
-        rect(8, 7, 33, 42, color);
-        rect(11, 11, 27, 19, "#2c4350");
-        rect(14, 13, 21, 4, "#70929e");
-        rect(23, 12, 2, 18, "#bcc3b6");
-        rect(10, 34, 29, 2, "#ffffff55");
-        rect(7, 6, 35, 4, "#d3d2c7");
+    rows.forEach((row, y) => {
+      const shift = Math.round(lean * (rows.length - y) * 0.22);
+      for (let x = 0; x < row.length; x++) {
+        const fill = palette[row[x]];
+        if (fill) {
+          g.fillStyle = fill;
+          g.fillRect(x + 4 + shift, y, 1, 1);
+        }
       }
-      if (kind === "PICKUP") {
-        rect(10, 30, 29, 20, "#29323b");
-        rect(12, 32, 25, 15, "#4d5960");
-        rect(13, 34, 2, 10, "#77828b");
-        rect(34, 34, 2, 10, "#77828b");
-      }
-    }
-    return c;
-  }
-  function scenery(type) {
-    const c = makeCanvas(64, 100),
-      g = c.getContext("2d");
-    if (type === "pine") {
-      g.fillStyle = "#695c3e";
-      g.fillRect(29, 49, 6, 50);
-      polygon(g, "#244e35", [
-        [31, 1],
-        [4, 67],
-        [15, 66],
-        [0, 85],
-        [64, 85],
-        [48, 64],
-        [59, 67],
-      ]);
-      polygon(g, "#376745", [
-        [30, 2],
-        [29, 69],
-        [6, 78],
-        [18, 55],
-        [12, 57],
-      ]);
-      polygon(g, "#507c4d", [
-        [29, 10],
-        [11, 56],
-        [22, 52],
-        [9, 73],
-        [29, 64],
-      ]);
-    }
-    if (type === "palm") {
-      polygon(g, "#7c6545", [
-        [30, 20],
-        [37, 21],
-        [34, 100],
-        [27, 100],
-      ]);
-      for (let i = 0; i < 6; i++) {
-        const x = 32 + Math.cos(i) * 32,
-          y = 24 + Math.sin(i) * 20;
-        polygon(g, i % 2 ? "#2f7052" : "#3a8357", [
-          [32, 25],
-          [x, y],
-          [x - 8, y + 20],
-          [34, 29],
-        ]);
-      }
-    }
-    if (type === "cactus") {
-      g.fillStyle = "#597953";
-      g.fillRect(26, 12, 12, 88);
-      g.fillRect(10, 33, 10, 30);
-      g.fillRect(17, 55, 15, 9);
-      g.fillRect(45, 20, 9, 31);
-      g.fillRect(34, 42, 15, 9);
-      g.fillStyle = "#739263";
-      g.fillRect(28, 14, 3, 84);
-      g.fillRect(12, 34, 3, 21);
-    }
-    return c;
-  }
-  function background(route) {
-    const c = makeCanvas(480, 300),
-      g = c.getContext("2d"),
-      r = ROUTES[route];
-    r.sky.forEach((color, i) => {
-      g.fillStyle = color;
-      g.fillRect(0, i * 34, 480, 40);
     });
-    [
-      [15, 20],
-      [162, 10],
-      [302, 32],
-      [408, 14],
-    ].forEach(([x, y]) => {
-      g.fillStyle = "#d7e1ee";
-      g.fillRect(x, y + 10, 66, 8);
-      g.fillRect(x + 8, y + 6, 47, 8);
-      g.fillStyle = "#f6f5e9";
-      g.fillRect(x + 15, y + 1, 23, 11);
-      g.fillRect(x + 3, y + 9, 56, 6);
-      g.fillRect(x + 10, y + 16, 48, 3);
-    });
-    const mountains = [
-      [0, 94],
-      [0, 71],
-      [29, 62],
-      [46, 69],
-      [72, 42],
-      [92, 49],
-      [115, 64],
-      [146, 38],
-      [169, 55],
-      [192, 48],
-      [218, 72],
-      [250, 40],
-      [281, 54],
-      [308, 32],
-      [333, 48],
-      [355, 42],
-      [390, 65],
-      [422, 49],
-      [446, 56],
-      [480, 38],
-      [480, 105],
-    ];
-    polygon(g, r.mountain, mountains);
-    if (route === "mountain") {
-      polygon(g, "#d0cfcf", [
-        [34, 68],
-        [72, 42],
-        [91, 49],
-        [114, 64],
-        [85, 58],
-        [75, 51],
-        [61, 58],
-        [52, 62],
-      ]);
-      polygon(g, "#d8d4cf", [
-        [122, 57],
-        [146, 38],
-        [169, 55],
-        [193, 48],
-        [210, 67],
-        [179, 59],
-        [166, 60],
-        [146, 48],
-        [139, 52],
-      ]);
-      polygon(g, "#e2ded6", [
-        [271, 52],
-        [308, 32],
-        [333, 48],
-        [355, 42],
-        [380, 61],
-        [345, 53],
-        [326, 54],
-        [308, 44],
-        [296, 45],
-      ]);
-    } else if (route === "desert") {
-      polygon(g, "#d1a07c", [
-        [45, 82],
-        [53, 50],
-        [81, 50],
-        [85, 78],
-        [112, 78],
-        [120, 61],
-        [144, 61],
-        [157, 93],
-      ]);
-      polygon(g, "#d7aa83", [
-        [305, 77],
-        [317, 44],
-        [352, 44],
-        [356, 72],
-        [397, 72],
-        [401, 94],
-      ]);
-    }
-    polygon(g, route === "desert" ? "#aa8260" : "#547d50", [
-      [0, 88],
-      [37, 81],
-      [82, 91],
-      [132, 77],
-      [187, 87],
-      [228, 76],
-      [272, 85],
-      [334, 74],
-      [386, 81],
-      [432, 72],
-      [480, 82],
-      [480, 110],
-      [0, 110],
-    ]);
-    g.fillStyle = r.grass[0];
-    g.fillRect(0, 94, 480, 206);
-    // Fixed seeded grain gives the low-resolution landscape its own texture.
-    let seed = 1937;
-    for (let i = 0; i < 4200; i++) {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const x = seed % 480;
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const y = 95 + (seed % 205);
-      g.fillStyle = i % 3 ? "#ffffff0d" : "#142e281c";
-      g.fillRect(x, y, 1 + (i % 2), 1);
-    }
-    if (route === "coast") {
-      polygon(g, "#6ca9bd", [
-        [0, 94],
-        [118, 94],
-        [200, 145],
-        [141, 192],
-        [0, 212],
-      ]);
-      for (let i = 0; i < 12; i++) {
-        g.fillStyle = "#b1d9d1";
-        g.fillRect(0, 105 + i * 7, 110 + i * 2, 1);
-      }
-    }
     return c;
   }
   function createRenderer() {
+    const art = root.CyberPixelArt;
     const backgrounds = {},
+      grass = {},
       trees = {},
       sprites = new Map();
-    for (const id of Object.keys(ROUTES)) {
-      backgrounds[id] = background(id);
-      trees[id] = scenery(ROUTES[id].trees);
-    }
-    const spriteFor = (kind, color) => {
-      const key = kind + color;
-      if (!sprites.has(key)) sprites.set(key, sprite(kind, color));
-      return sprites.get(key);
+    let surface = makeCanvas(320, 200),
+      g = surface.getContext("2d");
+    const palette = {
+      K: "#17212c",
+      H: "#dfd3a4",
+      W: "#fcf3c9",
+      V: "#34495d",
+      G: "#75838d",
+      C: "#d24e71",
+      L: "#ed8b98",
+      S: "#823252",
+      B: "#273145",
+      T: "#222635",
+      E: "#c8d2d3",
+      R: "#ef6548",
     };
-    function drawRoad(ctx, route, distance) {
-      const r = ROUTES[route];
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(backgrounds[route], 0, 0, VIEW.width, VIEW.height);
-      for (let i = 1; i <= 110; i++) {
-        const a = roadPoint((i - 1) / 100, distance),
-          b = roadPoint(i / 100, distance),
-          band = Math.floor(distance / 16 + i / 3) % 2;
-        a.y = Math.floor(a.y);
-        b.y = Math.ceil(b.y) + 1;
-        if (b.y <= VIEW.horizon) continue;
-        ctx.fillStyle = band ? r.grass[1] + "38" : r.grass[0] + "16";
-        ctx.fillRect(0, a.y, VIEW.width, b.y - a.y + 1);
-        const shoulderA = a.half * 1.11 + 2,
-          shoulderB = b.half * 1.11 + 2;
-        polygon(ctx, r.shoulder, [
-          [a.x - shoulderA, a.y],
-          [a.x + shoulderA, a.y],
-          [b.x + shoulderB, b.y],
-          [b.x - shoulderB, b.y],
-        ]);
-        polygon(ctx, band ? "#555660" : "#585962", [
-          [a.x - a.half, a.y],
-          [a.x + a.half, a.y],
-          [b.x + b.half, b.y],
-          [b.x - b.half, b.y],
-        ]);
-        for (const edge of [-1, 1]) {
-          const aw = Math.max(0.4, a.half * 0.007),
-            bw = Math.max(0.5, b.half * 0.007);
-          polygon(ctx, "#c9c7b2", [
-            [a.x + edge * a.half - aw, a.y],
-            [a.x + edge * a.half + aw, a.y],
-            [b.x + edge * b.half + bw, b.y],
-            [b.x + edge * b.half - bw, b.y],
-          ]);
+    function spriteFor(kind, color, lean = 0) {
+      const pose = lean > 0.04 ? 1 : lean < -0.04 ? -1 : 0,
+        key = kind + color + pose;
+      if (!sprites.has(key)) {
+        const c = bitmap(
+          kind === "BIKE" ? art.RIDER : art.CAR,
+          { ...palette, C: color || palette.C },
+          kind === "BIKE" ? pose : 0,
+        );
+        if (kind === "TRUCK" || kind === "SUV") {
+          const q = c.getContext("2d");
+          q.fillStyle = color;
+          q.fillRect(7, 0, 27, 22);
+          q.fillStyle = "#243c4d";
+          q.fillRect(10, 3, 21, 12);
+          q.fillStyle = "#88a5b2";
+          q.fillRect(11, 4, 18, 2);
+          q.fillStyle = "#a8b3b5";
+          q.fillRect(20, 3, 2, 12);
+          q.fillRect(7, 0, 27, 2);
         }
-        // Two dashed dividers retain the existing three steering lanes.
-        if (Math.floor(distance / 22 + i / 5) % 2 === 0)
-          for (const divider of [-1 / 3, 1 / 3]) {
-            const aw = Math.max(0.4, a.half * 0.009),
-              bw = Math.max(0.5, b.half * 0.009);
-            polygon(ctx, "#e7c95d", [
-              [a.x + divider * a.half - aw, a.y],
-              [a.x + divider * a.half + aw, a.y],
-              [b.x + divider * b.half + bw, b.y],
-              [b.x + divider * b.half - bw, b.y],
-            ]);
-          }
+        if (kind === "PICKUP") {
+          const q = c.getContext("2d");
+          q.fillStyle = "#283640";
+          q.fillRect(10, 13, 21, 8);
+          q.fillStyle = "#7f8b8f";
+          q.fillRect(12, 15, 1, 4);
+          q.fillRect(28, 15, 1, 4);
+        }
+        sprites.set(key, c);
       }
-      const offset = (distance % 900) / 900;
-      for (let i = 0; i < 18; i++) {
-        const t = (i / 18 + offset) % 1;
-        if (t < 0.1) continue;
+      return sprites.get(key);
+    }
+    for (const [id, r] of Object.entries(ROUTES)) {
+      const sky = makeCanvas(320, 70),
+        q = sky.getContext("2d");
+      q.fillStyle = r.sky;
+      q.fillRect(0, 0, 320, 70);
+      q.fillStyle = r.skyLow;
+      q.fillRect(0, 37, 320, 33);
+      [
+        [12, 14],
+        [110, 7],
+        [228, 13],
+      ].forEach(([x, y]) => {
+        q.fillStyle = "#cbd5e5";
+        q.fillRect(x, y + 7, 48, 8);
+        q.fillRect(x + 5, y + 3, 36, 11);
+        q.fillStyle = "#fff9e5";
+        q.fillRect(x + 12, y, 19, 11);
+        q.fillRect(x + 3, y + 8, 40, 5);
+      });
+      const ridge = [
+        [0, 57],
+        [21, 47],
+        [37, 52],
+        [56, 32],
+        [68, 39],
+        [76, 34],
+        [94, 50],
+        [112, 28],
+        [123, 40],
+        [141, 37],
+        [158, 50],
+        [179, 34],
+        [192, 42],
+        [210, 26],
+        [221, 36],
+        [235, 31],
+        [256, 45],
+        [278, 38],
+        [299, 45],
+        [320, 29],
+        [320, 70],
+        [0, 70],
+      ];
+      polygon(q, r.mountain, ridge);
+      if (id === "mountain") {
+        polygon(q, "#d4d4cc", [
+          [33, 51],
+          [56, 32],
+          [68, 39],
+          [76, 34],
+          [96, 52],
+          [74, 44],
+          [66, 43],
+          [57, 38],
+          [49, 46],
+        ]);
+        polygon(q, "#d4d4cc", [
+          [96, 46],
+          [112, 28],
+          [123, 40],
+          [140, 37],
+          [155, 49],
+          [132, 44],
+          [121, 45],
+          [112, 35],
+        ]);
+        polygon(q, "#eee9d6", [
+          [182, 42],
+          [210, 26],
+          [221, 36],
+          [235, 31],
+          [255, 45],
+          [235, 40],
+          [220, 41],
+          [210, 33],
+          [200, 34],
+        ]);
+      } else if (id === "desert") {
+        polygon(q, "#d1a376", [
+          [25, 62],
+          [32, 38],
+          [57, 38],
+          [64, 59],
+          [87, 59],
+          [94, 46],
+          [109, 46],
+          [120, 68],
+        ]);
+        polygon(q, "#d5ad7f", [
+          [198, 55],
+          [210, 30],
+          [235, 30],
+          [239, 54],
+          [270, 54],
+          [275, 69],
+        ]);
+      }
+      // Sparse two-color dithering breaks the mountain planes into deliberate pixels.
+      for (let y = 40; y < 66; y += 2)
+        for (let x = 0; x < 320; x += 3)
+          if ((x * 11 + y * 7) % 17 === 0) {
+            q.fillStyle = id === "desert" ? "#bd8e6b" : "#a5a9b3";
+            q.fillRect(x, y, 1, 1);
+          }
+      polygon(q, id === "desert" ? "#a88254" : "#386044", [
+        [0, 66],
+        [25, 60],
+        [49, 63],
+        [77, 58],
+        [108, 64],
+        [133, 60],
+        [163, 65],
+        [194, 57],
+        [231, 63],
+        [270, 55],
+        [302, 61],
+        [320, 58],
+        [320, 70],
+        [0, 70],
+      ]);
+      backgrounds[id] = sky;
+      const tile = makeCanvas(8, 8),
+        t = tile.getContext("2d");
+      t.fillStyle = r.grass[0];
+      t.fillRect(0, 0, 8, 8);
+      t.fillStyle = r.grass[1];
+      [
+        [0, 0],
+        [4, 1],
+        [2, 3],
+        [7, 4],
+        [1, 6],
+        [5, 7],
+      ].forEach((p) => t.fillRect(...p, 1, 1));
+      grass[id] = tile;
+      trees[id] = bitmap(
+        id === "coast" ? art.PALM : id === "desert" ? art.CACTUS : art.PINE,
+        {
+          K: id === "desert" ? "#42593e" : "#193f2c",
+          G: id === "desert" ? "#52704a" : "#25643e",
+          L: id === "desert" ? "#7c9456" : "#559454",
+          B: "#80613f",
+        },
+      );
+    }
+    const coinImage = bitmap(art.COIN, {
+      K: "#694321",
+      Y: "#ffd34e",
+      W: "#fff8b4",
+      D: "#bd8c2b",
+    });
+    function ensureSurface() {
+      const h = Math.ceil(VIEW.height / 3);
+      if (surface.height !== h) {
+        surface.height = h;
+        g = surface.getContext("2d");
+      }
+      g.imageSmoothingEnabled = false;
+    }
+    function drawRoad(_, route, distance) {
+      ensureSurface();
+      const r = ROUTES[route],
+        height = surface.height,
+        horizon = Math.round(VIEW.horizon / 3);
+      g.drawImage(backgrounds[route], 0, 0, 320, horizon);
+      g.fillStyle = g.createPattern(grass[route], "repeat");
+      g.fillRect(0, horizon, 320, height - horizon);
+      if (route === "coast") {
+        polygon(g, "#428ba5", [
+          [0, horizon],
+          [65, horizon],
+          [95, height * 0.68],
+          [0, height * 0.8],
+        ]);
+        g.fillStyle = "#83c8cd";
+        for (let y = horizon + 4; y < height * 0.75; y += 6)
+          g.fillRect(0, y, 45 + (y - horizon) * 0.3, 1);
+      }
+      for (let y = horizon; y < height; y++) {
+        const t = Math.pow((y - horizon) / (height - horizon), 1 / 2.1),
+          p = roadPoint(t, distance),
+          center = Math.round(p.x / 3),
+          half = Math.round(p.half / 3),
+          edge = Math.max(2, Math.round(half * 0.085));
+        const stripe = Math.floor((distance + (1 - t) * 2600) / 210) % 2;
+        g.fillStyle = r.shoulder;
+        g.fillRect(center - half - edge, y, half * 2 + edge * 2, 1);
+        g.fillStyle = stripe ? "#494b58" : "#4b4d5a";
+        g.fillRect(center - half, y, half * 2, 1);
+        g.fillStyle = "#e0dfcb";
+        g.fillRect(center - half, y, Math.max(1, Math.round(half * 0.006)), 1);
+        g.fillRect(
+          center + half - 1,
+          y,
+          Math.max(1, Math.round(half * 0.006)),
+          1,
+        );
+        // Broad carriageway: a center pair, with dashed white passing-lane marks.
+        const line = Math.max(1, Math.round(half * 0.008));
+        g.fillStyle = "#e7cc58";
+        g.fillRect(center - line * 2, y, line, 1);
+        g.fillRect(center + line, y, line, 1);
+        if (stripe) {
+          g.fillStyle = "#dddccf";
+          for (const lane of [-0.52, 0.52])
+            g.fillRect(Math.round(center + lane * half), y, line, 1);
+        }
+      }
+      const positions = Array.from(
+        { length: 14 },
+        (_, i) => (i / 14 + (distance % 1400) / 1400) % 1,
+      )
+        .filter((t) => t > 0.11)
+        .sort((a, b) => a - b);
+      for (const t of positions) {
         const p = roadPoint(t, distance),
-          scale = 0.1 + t * 2.4;
+          factor = 0.12 + t * 1.8;
         for (const side of [-1, 1]) {
           if (route === "coast" && side < 0) continue;
-          const x = p.x + side * (p.half * 1.38 + 20),
-            w = 45 * scale,
-            h = 95 * scale;
-          ctx.drawImage(
-            trees[route],
-            Math.round(x - w / 2),
-            Math.round(p.y - h),
-            Math.round(w),
-            Math.round(h),
-          );
+          const image = trees[route],
+            w = Math.round(18 * factor),
+            h = Math.round(44 * factor),
+            x = Math.round((p.x + side * (p.half * 1.18 + 35)) / 3),
+            y = Math.round(p.y / 3);
+          g.drawImage(image, x - Math.round(w / 2), y - h, w, h);
         }
-        // Roadside reflector posts ground the sense of speed.
-        ctx.fillStyle = "#ece7c6";
-        ctx.fillRect(p.x - p.half * 1.13 - 2, p.y - 18 * t, 3 * t, 18 * t);
-        ctx.fillStyle = "#d67548";
-        ctx.fillRect(p.x - p.half * 1.13 - 2, p.y - 18 * t, 3 * t, 5 * t);
+        const x = Math.round((p.x - p.half * 1.105) / 3),
+          y = Math.round(p.y / 3),
+          h = Math.max(1, Math.round(8 * t));
+        g.fillStyle = "#eee6c1";
+        g.fillRect(x, y - h, 1, h);
+        g.fillStyle = "#b74932";
+        g.fillRect(x, y - h, 1, Math.max(1, Math.round(h * 0.3)));
       }
     }
-    function vehicle(ctx, entity, distance, lean = 0) {
+    function vehicle(_, entity, distance, lean = 0) {
       const p = project(
           entity.x + entity.width / 2,
           entity.y + entity.height,
           distance,
         ),
-        image = spriteFor(entity.type || "BIKE", entity.color),
-        width = entity.width * 3.5 * p.scale,
-        height =
-          (entity.type === "TRUCK"
-            ? entity.height * 2
-            : entity.type === "BIKE"
-              ? 185
-              : 145) * p.scale;
-      ctx.save();
-      ctx.translate(Math.round(p.x), Math.round(p.y));
-      ctx.fillStyle = "#19232770";
-      ctx.beginPath();
-      ctx.ellipse(
-        8,
-        0,
-        width * 0.66,
-        Math.max(2, 9 * p.scale),
-        0,
-        0,
-        Math.PI * 2,
+        image = spriteFor(entity.type || "BIKE", entity.color, lean),
+        w = Math.max(2, Math.round((entity.width * 3.5 * p.scale) / 3)),
+        h = Math.max(
+          3,
+          Math.round(
+            ((entity.type === "TRUCK"
+              ? entity.height * 2
+              : entity.type === "BIKE"
+                ? 185
+                : 145) *
+              p.scale) /
+              3,
+          ),
+        ),
+        x = Math.round(p.x / 3),
+        y = Math.round(p.y / 3);
+      g.fillStyle = "#252d35";
+      g.fillRect(
+        x - Math.round(w * 0.6),
+        y,
+        Math.round(w * 1.2),
+        Math.max(1, Math.round(2 * p.scale)),
       );
-      ctx.fill();
-      ctx.rotate(lean);
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(image, -width / 2, -height, width, height);
-      ctx.restore();
+      g.fillRect(x - Math.round(w * 0.4), y - 1, Math.round(w * 0.8), 1);
+      g.drawImage(image, x - Math.round(w / 2), y - h, w, h);
     }
-    function coin(ctx, entity, distance) {
+    function coin(_, entity, distance) {
       const p = project(
           entity.x + entity.width / 2,
           entity.y + entity.height / 2,
           distance,
         ),
-        radius = Math.max(2, 12 * p.scale);
-      ctx.fillStyle = "#553d28";
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, radius, radius * 1.18, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#ffd768";
-      ctx.beginPath();
-      ctx.ellipse(
-        p.x,
-        p.y - radius * 0.1,
-        radius * 0.82,
-        radius,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
-      ctx.strokeStyle = "#b88934";
-      ctx.lineWidth = Math.max(1, 2 * p.scale);
-      ctx.stroke();
-      ctx.fillStyle = "#fff2b6";
-      ctx.fillRect(
-        p.x - radius * 0.2,
-        p.y - radius * 0.66,
-        Math.max(1, radius * 0.23),
-        radius * 1.1,
+        h = Math.max(3, Math.round((24 * p.scale) / 3)),
+        x = Math.round(p.x / 3),
+        y = Math.round(p.y / 3);
+      const frame = [1, 0.75, 0.4, 0.75][Math.floor(distance / 45) % 4],
+        w = Math.max(2, Math.round(h * frame));
+      g.drawImage(
+        coinImage,
+        x - Math.round(w / 2),
+        y - Math.round(h / 2),
+        w,
+        h,
       );
     }
-    function particles(ctx, items, distance) {
+    function particles(_, items, distance) {
       for (const item of items) {
+        if (item.alpha <= 0) continue;
         const p = project(item.x, item.y, distance);
-        ctx.globalAlpha = Math.max(0, item.alpha);
-        ctx.fillStyle = item.color;
-        ctx.fillRect(
-          p.x,
-          p.y,
-          Math.max(2, item.size * p.scale * 2),
-          Math.max(2, item.size * p.scale * 2),
-        );
+        g.fillStyle = item.color;
+        const n = Math.max(1, Math.round((item.size * p.scale) / 3));
+        g.fillRect(Math.round(p.x / 3), Math.round(p.y / 3), n, n);
       }
-      ctx.globalAlpha = 1;
+    }
+    function present(ctx) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(surface, 0, 0, VIEW.width, VIEW.height);
     }
     function preview(canvas, ride) {
-      const g = canvas.getContext("2d");
-      g.clearRect(0, 0, 150, 90);
-      g.fillStyle = "#152026";
-      g.fillRect(0, 0, 150, 90);
-      g.fillStyle = "#394649";
-      g.fillRect(15, 70, 120, 2);
-      g.imageSmoothingEnabled = false;
-      g.drawImage(spriteFor(ride.kind, ride.color), 54, 5, 42, 72);
+      const q = canvas.getContext("2d"),
+        image = spriteFor(ride.kind, ride.color);
+      q.imageSmoothingEnabled = false;
+      q.fillStyle = "#111827";
+      q.fillRect(0, 0, canvas.width, canvas.height);
+      q.fillStyle = "#67768b";
+      q.fillRect(8, canvas.height - 8, canvas.width - 16, 1);
+      const h = canvas.height - 12,
+        w = Math.round((image.width / image.height) * h);
+      q.drawImage(image, Math.round((canvas.width - w) / 2), 3, w, h);
     }
-    return { drawRoad, vehicle, coin, particles, preview };
+    return { drawRoad, vehicle, coin, particles, present, preview };
   }
-  const api = { WORLD, VIEW, ROUTES, roadPoint, project, createRenderer };
+  const api = {
+    WORLD,
+    VIEW,
+    ROUTES,
+    COURSE,
+    courseTurn,
+    roadPoint,
+    project,
+    createRenderer,
+  };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.CyberRoad = api;
 })(typeof globalThis === "object" ? globalThis : this);

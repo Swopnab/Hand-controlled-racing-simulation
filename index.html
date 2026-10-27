@@ -12,25 +12,30 @@
       content="CyberSteer: a retro highway racer with hand, keyboard and touch controls. Collect coins, unlock rides and explore three scenic routes."
     />
     <title>CyberSteer — Open Road Arcade</title>
-    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="preload"
+      href="assets/cybersteer-pixel.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="style.css?v=pixel2" />
   </head>
   <body>
     <div id="app-container">
       <header class="masthead">
-        <a class="brand" href="./" aria-label="CyberSteer home"
-          ><span class="brand-icon" aria-hidden="true">↗</span
-          ><span
-            >CYBER<span class="brand-gold">STEER</span
-            ><small>OPEN ROAD / ARCADE RACING</small></span
-          ></a
-        >
+        <a class="brand" href="./" aria-label="CyberSteer home">CYBERSTEER</a>
         <div class="header-actions">
+          <label class="fullscreen-toggle"
+            ><input type="checkbox" id="fullscreen-toggle" /><span
+              id="fullscreen-label"
+              >Full screen</span
+            ></label
+          >
           <span class="wallet" aria-label="Coin balance"
             ><span class="coin-icon" aria-hidden="true">●</span>
             <strong id="wallet-coins">0</strong></span
-          ><button id="btn-garage" class="garage-button">
-            Garage <span aria-hidden="true">↗</span>
-          </button>
+          ><button id="btn-garage" class="garage-button">Garage</button>
         </div>
       </header>
       <main id="play-area" aria-label="CyberSteer racing game">
@@ -40,21 +45,17 @@
               id="gameCanvas"
               width="960"
               height="600"
-              aria-label="A winding highway through the selected landscape"
+              aria-label="A highway with straight sections and bends through the selected landscape"
             ></canvas>
-            <div class="scene-grain" aria-hidden="true"></div>
+
             <div class="route-tag">
               <span class="live-dot"></span
               ><span id="route-caption">MOUNTAIN PASS</span>
             </div>
             <div id="start-screen" class="menu-overlay active">
               <div class="menu-card">
-                <span class="eyebrow">THE HIGHWAY IS CALLING</span>
-                <h1>FULL<br /><em>THROTTLE.</em></h1>
-                <p class="subtitle">
-                  Pick a road. Find your rhythm.<br />Keep your eyes on the
-                  horizon.
-                </p>
+                <h1>CYBERSTEER</h1>
+                <p class="subtitle">SELECT A COURSE</p>
                 <div
                   class="route-selector"
                   role="group"
@@ -65,45 +66,42 @@
                     data-route="mountain"
                     aria-pressed="true"
                   >
-                    <span aria-hidden="true">△</span>Mountain</button
+                    Mountain</button
                   ><button
                     class="route-choice"
                     data-route="coast"
                     aria-pressed="false"
                   >
-                    <span aria-hidden="true">≈</span>Coast</button
+                    Coast</button
                   ><button
                     class="route-choice"
                     data-route="desert"
                     aria-pressed="false"
                   >
-                    <span aria-hidden="true">☀</span>Desert
+                    Desert
                   </button>
                 </div>
-                <span class="mode-label">CHOOSE YOUR CONTROLS</span>
+                <span class="mode-label">CONTROLS</span>
                 <div class="btn-container">
                   <button id="btn-play-touch" class="cyber-btn primary">
-                    Touch<span>Tap to steer</span></button
+                    Touch</button
                   ><button id="btn-play-keyboard" class="cyber-btn secondary">
-                    Keyboard<span>← / → or A / D</span></button
+                    Keyboard</button
                   ><button id="btn-play-hand" class="cyber-btn secondary">
-                    Hand cam<span>Webcam steering</span>
+                    Hand cam
                   </button>
                 </div>
-                <p class="mode-help">
-                  Dodge traffic. Collect coins. Unlock your next ride.
-                </p>
+                <p class="mode-help">DODGE TRAFFIC. COLLECT COINS.</p>
                 <p id="camera-status" role="status" hidden></p>
               </div>
             </div>
             <div id="paused-screen" class="menu-overlay">
               <div class="menu-card compact">
-                <span class="eyebrow">TAKE A BREATHER</span>
-                <h2>ON A<br /><em>PIT STOP.</em></h2>
-                <p class="subtitle">Your road will be right here.</p>
+                <h2>PAUSED</h2>
+
                 <div class="btn-container">
                   <button id="btn-resume" class="cyber-btn primary">
-                    Back to the road</button
+                    Resume</button
                   ><button
                     id="btn-pause-quit"
                     class="cyber-btn secondary btn-quit-action"
@@ -115,9 +113,8 @@
             </div>
             <div id="gameover-screen" class="menu-overlay">
               <div class="menu-card compact">
-                <span class="eyebrow">END OF THE ROAD</span>
-                <h2>THAT'S<br /><em>A WRAP.</em></h2>
-                <p class="subtitle">Dust off. Ride again.</p>
+                <h2>GAME OVER</h2>
+
                 <div class="results-grid">
                   <div>
                     <span>Traffic passed</span
@@ -134,7 +131,7 @@
                 </div>
                 <div class="btn-container">
                   <button id="btn-restart" class="cyber-btn primary">
-                    Ride again</button
+                    Retry</button
                   ><button
                     id="btn-over-quit"
                     class="cyber-btn secondary btn-quit-action"
@@ -214,46 +211,46 @@
         <span
           ><kbd>←</kbd> <kbd>→</kbd> Steer
           <span class="footer-divider">/</span> <kbd>P</kbd> Pause</span
-        ><span id="progress-status" role="status"
-          >Coins & rides saved on this device.</span
-        ><span class="footer-version">THREE ROADS. ONE MORE RUN.</span>
+        ><span id="progress-status" role="status">Progress saved locally.</span
+        ><span class="footer-version">P / ESC: PAUSE</span>
       </footer>
-    </div>
-    <dialog id="garage-dialog" aria-labelledby="garage-title">
-      <div class="garage-heading">
-        <div>
-          <span class="eyebrow">THE NEXT RIDE IS YOURS</span>
-          <h2 id="garage-title">Your garage.</h2>
+      <dialog id="garage-dialog" aria-labelledby="garage-title">
+        <div class="garage-heading">
+          <div>
+            <span class="eyebrow">VEHICLE SELECT</span>
+            <h2 id="garage-title">GARAGE</h2>
+          </div>
+          <button
+            id="btn-close-garage"
+            class="close-button"
+            aria-label="Close garage"
+          >
+            ×
+          </button>
         </div>
-        <button
-          id="btn-close-garage"
-          class="close-button"
-          aria-label="Close garage"
-        >
-          ×
-        </button>
-      </div>
-      <div class="garage-balance">
-        <span>Available coins</span
-        ><strong
-          ><span class="coin-icon" aria-hidden="true">●</span>
-          <span id="garage-coins">0</span></strong
-        >
-      </div>
-      <p class="garage-note">
-        Collect gold coins on the road to unlock new rides. Vehicle unlocks
-        change the look; speed and handling stay the same.
-      </p>
-      <div id="garage-vehicles" class="garage-grid"></div>
-      <p id="garage-message" role="status"></p>
-      <p class="garage-footnote">
-        Earned in-game coins only. Saved in this browser.
-      </p>
-    </dialog>
-    <script src="steering.js" defer></script>
-    <script src="progression.js" defer></script>
-    <script src="road-renderer.js" defer></script>
-    <script src="handControl.js" defer></script>
-    <script src="game.js" defer></script>
+        <div class="garage-balance">
+          <span>Available coins</span
+          ><strong
+            ><span class="coin-icon" aria-hidden="true">●</span>
+            <span id="garage-coins">0</span></strong
+          >
+        </div>
+        <p class="garage-note">
+          Unlocks change the look. Speed and handling stay the same.
+        </p>
+        <div id="garage-vehicles" class="garage-grid"></div>
+        <p id="garage-message" role="status"></p>
+        <p class="garage-footnote">
+          Earned in-game coins only. Saved in this browser.
+        </p>
+      </dialog>
+    </div>
+    <script src="fullscreen.js?v=pixel2" defer></script>
+    <script src="steering.js?v=pixel2" defer></script>
+    <script src="progression.js?v=pixel2" defer></script>
+    <script src="pixel-art.js?v=pixel2" defer></script>
+    <script src="road-renderer.js?v=pixel2" defer></script>
+    <script src="handControl.js?v=pixel2" defer></script>
+    <script src="game.js?v=pixel2" defer></script>
   </body>
 </html>

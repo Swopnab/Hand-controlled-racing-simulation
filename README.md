@@ -1,6 +1,6 @@
 # CyberSteer — Open Road Arcade
 
-A retro highway racer with a rear-view motorcycle/car camera, winding roads, three scenic locations, collectible coins and a vehicle garage. Play with touch controls, a keyboard, or webcam hand steering.
+A retro highway racer with a rear-view motorcycle/car camera, wide roads with straight sections and bends, three scenic locations, collectible coins and a vehicle garage. Play with touch controls, a keyboard, or webcam hand steering.
 
 **[Play CyberSteer](https://swopnab.github.io/Hand-controlled-racing-simulation/)**
 
@@ -12,7 +12,11 @@ Choose a location on the starting screen:
 - **Coastal run:** ocean views, palms and a blue coastal sky.
 - **Canyon route:** warm desert terrain, mesas and cacti.
 
-The road, scenery and rear-view vehicles use original procedural pixel artwork in `road-renderer.js`, inspired by classic 1990s road racers. There are no copied Road Rash assets or new asset-service dependencies. Graphics are generated and cached locally; no image download is needed for the landscape or vehicles.
+The road alternates long straight stretches with right and left bends, with smooth transitions. The wider carriageway has double yellow center lines, dashed passing-lane marks and roadside posts. Its bends change the perspective over the existing three steering lanes.
+
+The entire scene is painted on a **320-pixel-wide** offscreen canvas and enlarged with nearest-neighbor sampling. Vehicles, coins and trees use original fixed-grid sprites in `pixel-art.js`; scenery uses integer scanlines and a limited color palette in `road-renderer.js`. Menus, buttons and the HUD use the bundled **CyberSteer Pixel** bitmap lettering. There are no external fonts, copied Road Rash assets or artwork services.
+
+The [provided gameplay reference](https://www.youtube.com/shorts/IRDbomUym_w) informed the wider lanes, rear-view framing, straight approaches and compact dashboard. This remains CyberSteer's traffic-dodging/coin game; it does not reproduce the reference game's combat or police mechanics.
 
 ## Coins and the garage
 
@@ -20,12 +24,12 @@ Drive into gold coins to collect them. Each coin adds **one** coin to your walle
 
 Open **Garage** to unlock and equip a ride:
 
-| Ride | Cost |
-|---|---:|
+| Ride                    |         Cost |
+| ----------------------- | -----------: |
 | Street rider motorcycle | Free starter |
-| Rally coupe | 40 coins |
-| Midnight GT | 100 coins |
-| Coast roadster | 180 coins |
+| Rally coupe             |     40 coins |
+| Midnight GT             |    100 coins |
+| Coast roadster          |    180 coins |
 
 Unlocking deducts coins once and equips the vehicle. Re-equipping an owned ride is free. These unlocks change the vehicle's appearance; all rides retain the same speed progression, steering and collision footprint. The garage explains this before purchase. Opening the garage during a run pauses it; closing the garage leaves the run paused until you explicitly resume.
 
@@ -36,6 +40,10 @@ Coins, owned vehicles and equipped vehicle are saved under `cybersteerProgressV1
 ### Touch
 
 Choose **Touch**. Tap Left or Right to change one steering lane per press; the middle button pauses/resumes. Rotate freely: rotation pauses the run and preserves its state. The camera adapts to portrait and landscape while the simulation stays unchanged. The game also pauses when the tab is hidden or loses focus.
+
+### Fullscreen
+
+Check **Full screen** in the header to enter browser fullscreen; uncheck it to leave. The checkbox follows native fullscreen exits, including the browser's Escape action. Browsers that do not allow fullscreen use a clearly labeled **Expanded view** that fills the available browser area. Uncheck it or press Escape to close that layout. Escape inside the garage closes the garage first. Fullscreen/resizing preserves the run and wallet.
 
 ### Keyboard
 
@@ -55,7 +63,7 @@ The existing MediaPipe detector uses 21 landmarks, mirrored palm landmark 9, thr
 
 Avoid motorcycles, cars, SUVs, pickups and trucks. Passing a traffic vehicle earns one score point; coin collection is counted separately. A collision ends the run and shows score, high score and collected coins. Speed progresses automatically from **50 → 75 → 90 → 100 mph**, changing approximately every 15 seconds. All locations use the same rules.
 
-The simulation runs at a fixed 60 Hz, independent of the display refresh rate. The original 470×630 driving world handles steering, collisions and spawning; a separate perspective renderer draws it into a 960-pixel-wide canvas. Portrait mode increases the rendering height to use phone screens more effectively without stretching the actors or changing collision coordinates. Road curves are a visual projection over the existing three steering lanes.
+The simulation runs at a fixed 60 Hz, independent of the display refresh rate. The original 470×630 driving world handles steering, collisions and spawning; a separate perspective renderer paints a 320-pixel-wide scene into a 960-pixel-wide display canvas. Portrait mode increases the rendering height to use phone screens more effectively without stretching the actors or changing collision coordinates. Road curves are a visual projection over the existing three steering lanes.
 
 ## Run locally
 
@@ -79,6 +87,7 @@ Playwright is free and development-only. CI runs the same unit and browser suite
 - Nine viewport sizes from 320×568 to 1366×900, including portrait/landscape rotation.
 - Touch/keyboard steering, pause, collision, restart, score persistence and background-tab pause.
 - Hand adapters, unavailable CDN/camera, pointer cancellation and 30/60/120 Hz game pacing.
+- Native fullscreen and external exits, unavailable/denied fullscreen fallback, responsive expanded view, local font loading and solid 3×3 canvas pixel blocks on straight/right/left sections.
 - Three distinct locations, actual coin pickup collisions, wrong-lane non-pickups, earning/unlocking/equipping a car, saved progress through reload and wreck/restart, garage dialog bounds and temporary progress when storage is unavailable.
 
 Set `CYBERSTEER_SCREENSHOTS` to a directory outside the repo to save visual-review screenshots.
@@ -93,7 +102,11 @@ The benchmark is a paused synthetic scene with ten vehicles at three viewport si
 
 - `index.html`, `style.css`: responsive cabinet, menus, HUD, touch controls and garage.
 - `game.js`: fixed-step simulation, inputs, traffic/coin collisions, lifecycle and UI wiring.
-- `road-renderer.js`: road projection and cached original scenery/vehicle artwork.
+- `road-renderer.js`: segmented course, wide road projection and integer-resolution scenery.
+- `pixel-art.js`: fixed-grid vehicles, coins and roadside sprites.
+- `assets/pixel-font.json`, `assets/cybersteer-pixel.ttf`: editable bitmap glyph source and bundled local font.
+- `scripts/build_pixel_font.py`: optional font rebuild using free FontTools (`pip install fonttools==4.60.1`); the checked-in font requires no build to play.
+- `fullscreen.js`: fullscreen checkbox, state synchronization and expanded-view fallback.
 - `progression.js`: validated local wallet, unlocks and equipped-vehicle storage.
 - `steering.js`, `handControl.js`: pure steering rules and MediaPipe adapter.
 - `tests/`: unit, mobile/control, coin/garage and rendering checks.
