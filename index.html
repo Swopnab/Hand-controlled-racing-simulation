@@ -11,7 +11,7 @@
       name="description"
       content="CyberSteer: a retro highway racer with hand, keyboard and touch controls. Collect coins, unlock rides and explore three scenic routes."
     />
-    <title>CyberSteer — Open Road Arcade</title>
+    <title>CyberSteer: Hand-Controlled Racing</title>
     <link
       rel="preload"
       href="assets/cybersteer-pixel.ttf"
@@ -19,7 +19,7 @@
       type="font/ttf"
       crossorigin
     />
-    <link rel="stylesheet" href="style.css?v=pixel2" />
+    <link rel="stylesheet" href="style.css?v=restore3" />
   </head>
   <body>
     <div id="app-container">
@@ -54,8 +54,8 @@
             </div>
             <div id="start-screen" class="menu-overlay active">
               <div class="menu-card">
-                <h1>CYBERSTEER</h1>
-                <p class="subtitle">SELECT A COURSE</p>
+                <h1 class="gold-heading">CyberSteer</h1>
+                <p class="subtitle">Hand-Controlled Highway Dodger</p>
                 <div
                   class="route-selector"
                   role="group"
@@ -84,20 +84,24 @@
                 <span class="mode-label">CONTROLS</span>
                 <div class="btn-container">
                   <button id="btn-play-touch" class="cyber-btn primary">
-                    Touch</button
+                    Play Touch</button
                   ><button id="btn-play-keyboard" class="cyber-btn secondary">
-                    Keyboard</button
+                    Play Keyboard</button
                   ><button id="btn-play-hand" class="cyber-btn secondary">
-                    Hand cam
+                    Play Hand Mode
                   </button>
                 </div>
-                <p class="mode-help">DODGE TRAFFIC. COLLECT COINS.</p>
+                <p class="mode-help">
+                  Touch: tap arrows. Hand mode: keep your palm still and point
+                  one finger left, up, or right.
+                </p>
                 <p id="camera-status" role="status" hidden></p>
               </div>
             </div>
             <div id="paused-screen" class="menu-overlay">
               <div class="menu-card compact">
-                <h2>PAUSED</h2>
+                <h2 class="gold-heading">Game Paused</h2>
+                <p class="subtitle">Steering Locked</p>
 
                 <div class="btn-container">
                   <button id="btn-resume" class="cyber-btn primary">
@@ -106,14 +110,15 @@
                     id="btn-pause-quit"
                     class="cyber-btn secondary btn-quit-action"
                   >
-                    Main menu
+                    Quit to Menu
                   </button>
                 </div>
               </div>
             </div>
             <div id="gameover-screen" class="menu-overlay">
               <div class="menu-card compact">
-                <h2>GAME OVER</h2>
+                <h2 class="gold-heading">Wrecked</h2>
+                <p class="subtitle">Collision Detected</p>
 
                 <div class="results-grid">
                   <div>
@@ -131,12 +136,12 @@
                 </div>
                 <div class="btn-container">
                   <button id="btn-restart" class="cyber-btn primary">
-                    Retry</button
+                    Reboot Run</button
                   ><button
                     id="btn-over-quit"
                     class="cyber-btn secondary btn-quit-action"
                   >
-                    Main menu
+                    Quit to Menu
                   </button>
                 </div>
               </div>
@@ -151,7 +156,10 @@
                 ><canvas id="webcam-overlay" width="640" height="480"></canvas>
               </div>
               <div id="instructions-section">
-                <span>Move your hand left, center, or right.</span>
+                <span
+                  >Keep your palm still. Point a raised finger left / up /
+                  right.</span
+                >
               </div>
             </aside>
           </div>
@@ -245,12 +253,12 @@
         </p>
       </dialog>
     </div>
-    <script src="fullscreen.js?v=pixel2" defer></script>
-    <script src="steering.js?v=pixel2" defer></script>
-    <script src="progression.js?v=pixel2" defer></script>
-    <script src="pixel-art.js?v=pixel2" defer></script>
-    <script src="road-renderer.js?v=pixel2" defer></script>
-    <script src="handControl.js?v=pixel2" defer></script>
-    <script src="game.js?v=pixel2" defer></script>
+    <script src="fullscreen.js?v=restore3" defer></script>
+    <script src="steering.js?v=restore3" defer></script>
+    <script src="progression.js?v=restore3" defer></script>
+    <script src="pixel-art.js?v=restore3" defer></script>
+    <script src="road-renderer.js?v=restore3" defer></script>
+    <script src="handControl.js?v=restore3" defer></script>
+    <script src="game.js?v=restore3" defer></script>
   </body>
 </html>

@@ -14,7 +14,7 @@ Choose a location on the starting screen:
 
 The road alternates long straight stretches with right and left bends, with smooth transitions. The wider carriageway has double yellow center lines, dashed passing-lane marks and roadside posts. Its bends change the perspective over the existing three steering lanes.
 
-The entire scene is painted on a **320-pixel-wide** offscreen canvas and enlarged with nearest-neighbor sampling. Vehicles, coins and trees use original fixed-grid sprites in `pixel-art.js`; scenery uses integer scanlines and a limited color palette in `road-renderer.js`. Menus, buttons and the HUD use the bundled **CyberSteer Pixel** bitmap lettering. There are no external fonts, copied Road Rash assets or artwork services.
+The entire scene is painted on a **320-pixel-wide** offscreen canvas and enlarged with nearest-neighbor sampling. Vehicles, coins and trees use original fixed-grid sprites in `pixel-art.js`; scenery uses integer scanlines and a limited color palette in `road-renderer.js`. The original synthwave `background.jpg`, gold CyberSteer title, cyan menu styling and top-down starting-screen road are preserved. The perspective scenery is used during races. Menus, buttons and the HUD use the bundled **CyberSteer Pixel** bitmap lettering. There are no external fonts, copied Road Rash assets or artwork services.
 
 The [provided gameplay reference](https://www.youtube.com/shorts/IRDbomUym_w) informed the wider lanes, rear-view framing, straight approaches and compact dashboard. This remains CyberSteer's traffic-dodging/coin game; it does not reproduce the reference game's combat or police mechanics.
 
@@ -55,9 +55,11 @@ Check **Full screen** in the header to enter browser fullscreen; uncheck it to l
 
 ### Hand camera
 
-Choose **Hand cam**, allow the webcam, and move your hand left, center or right. The small live preview shows mirrored video, landmarks and steering zones. Camera/MediaPipe access is requested only for Hand mode; Touch and Keyboard work without them. If camera access or the model download fails, other modes stay available.
+Choose **Play Hand Mode**, allow the webcam, and keep your palm comfortably still. Raise one finger and point it **left** for the left lane, **upright** for the center lane, or **right** for the right lane. Index, middle, ring, little finger or thumb can be used; the active raised finger stays selected while extended. Fold the others when switching fingers. The preview highlights the selected tip and reports its direction. Closing the hand returns to the center lane; losing tracking holds the current lane until the hand is detected again. Touch and keyboard controls are unchanged.
 
-The existing MediaPipe detector uses 21 landmarks, mirrored palm landmark 9, thresholds 0.38/0.62 and a 0.03 hysteresis buffer. Steering fixtures validate mirroring, boundary jitter, lane changes, malformed coordinates and tracking loss/reacquisition. They do not measure webcam-recognition accuracy.
+Direction uses the fingertip relative to its base joint, normalized by finger length with camera-aspect correction. Translating the whole hand across the camera does not change steering. Folded fingers are excluded using joint straightness, palm-relative length and wrist distance. The existing lane hysteresis reduces boundary jitter. No camera frames leave the browser; the existing MediaPipe model/libraries load on demand. If camera access or the model download fails, Touch and Keyboard remain available.
+
+Automated landmark fixtures check translation/scale invariance, finger selection, mirroring, folded-hand recovery and lane transitions. They do not establish physical webcam-recognition accuracy for every hand, camera or lighting condition.
 
 ## Game rules
 
