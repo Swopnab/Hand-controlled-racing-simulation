@@ -91,7 +91,7 @@ async function screenshot(page, name) {
             assert.equal((await state(page)).lane, 2);
             await fits(page, '#gameCanvas', height, width);
             await fits(page, '#touch-controls', height, width);
-            assert.deepEqual(await page.evaluate(() => [canvas.width,canvas.height]), [470,630]);
+            assert.deepEqual(await page.evaluate(() => [CyberRoad.WORLD.width,CyberRoad.WORLD.height]), [470,630]);
             await page.locator('#btn-resume').tap();
             await page.evaluate(() => window.dispatchEvent(new Event('blur')));
             assert.equal((await state(page)).state, 'PAUSED');

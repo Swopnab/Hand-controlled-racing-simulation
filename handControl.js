@@ -120,14 +120,14 @@ const handControl = {
         // Draw visual zone guides (Left, Center, Right)
         this.drawZoneGuides(ctx, w, h);
 
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks?.[0];
+        const palmCenter = CyberSteering.mirroredPalm(landmarks);
+        if (palmCenter) {
             this.handDetected = true;
-            const landmarks = results.multiHandLandmarks[0];
 
             // In mirrored space: x_mirrored = 1 - x_raw
             // Landmark 9 is the Middle MCP (palm center), landmark 0 is wrist
-            const palmCenter = landmarks[9];
-            this.rawX = 1 - palmCenter.x;
+            this.rawX = palmCenter.x;
             this.rawY = palmCenter.y;
 
             // Determine zone
@@ -148,23 +148,7 @@ const handControl = {
 
     // Calculate zone with hysteresis to prevent twitching near borders
     calculateZone(x, prevZone) {
-        const { leftBound, rightBound, hysteresis } = this.thresholds;
-
-        if (prevZone === 'LEFT') {
-            if (x > leftBound + hysteresis) {
-                return x > rightBound ? 'RIGHT' : 'CENTER';
-            }
-            return 'LEFT';
-        } else if (prevZone === 'RIGHT') {
-            if (x < rightBound - hysteresis) {
-                return x < leftBound ? 'LEFT' : 'CENTER';
-            }
-            return 'RIGHT';
-        } else { // prevZone === 'CENTER'
-            if (x < leftBound - hysteresis) return 'LEFT';
-            if (x > rightBound + hysteresis) return 'RIGHT';
-            return 'CENTER';
-        }
+        return CyberSteering.calculateZone(x, prevZone, this.thresholds);
     },
 
     // Draw Left/Center/Right zone overlays on the camera preview
