@@ -12,7 +12,7 @@ Choose a location on the starting screen:
 - **Coastal run:** ocean views, palms and a blue coastal sky.
 - **Canyon route:** warm desert terrain, mesas and cacti.
 
-The road alternates long straight stretches with right and left bends, with smooth transitions. The wider carriageway has double yellow center lines, dashed passing-lane marks and roadside posts. Its bends change the perspective over the existing three steering lanes.
+The road alternates long straight stretches with right and left bends, with smooth transitions. The wider carriageway has a yellow left edge and two dashed dividers that match the three same-direction driving lanes and roadside posts. Its bends change the perspective over the existing three steering lanes.
 
 The entire scene is painted on a **320-pixel-wide** offscreen canvas and enlarged with nearest-neighbor sampling. Vehicles, coins and trees use original fixed-grid sprites in `pixel-art.js`; scenery uses integer scanlines and a limited color palette in `road-renderer.js`. The original synthwave `background.jpg`, gold CyberSteer title, cyan menu styling and top-down starting-screen road are preserved. The perspective scenery is used during races. Menus, buttons and the HUD use the bundled **CyberSteer Pixel** bitmap lettering. There are no external fonts, copied Road Rash assets or artwork services.
 
@@ -55,15 +55,15 @@ Check **Full screen** in the header to enter browser fullscreen; uncheck it to l
 
 ### Hand camera
 
-Choose **Play Hand Mode**, allow the webcam, and keep your palm comfortably still. Raise one finger and point it **left** for the left lane, **upright** for the center lane, or **right** for the right lane. Index, middle, ring, little finger or thumb can be used; the active raised finger stays selected while extended. Fold the others when switching fingers. The preview highlights the selected tip and reports its direction. Closing the hand returns to the center lane; losing tracking holds the current lane until the hand is detected again. Touch and keyboard controls are unchanged.
+Select the **Hand mode finger** (Index by default), then choose **Play Hand Mode** and allow the webcam. Keep your palm still and hold the selected finger in a comfortable neutral pose for five stable camera samples. The race waits until centering completes. Move the fingertip slightly left or right from that position to select the left/right lane; return to its neutral position for the center lane. You do not have to straighten the finger or move your hand across the camera.
 
-Direction uses the fingertip relative to its base joint, normalized by finger length with camera-aspect correction. Translating the whole hand across the camera does not change steering. Folded fingers are excluded using joint straightness, palm-relative length and wrist distance. The existing lane hysteresis reduces boundary jitter. No camera frames leave the browser; the existing MediaPipe model/libraries load on demand. If camera access or the model download fails, Touch and Keyboard remain available.
+The selected finger never changes automatically. Choose another finger in the starting menu to switch. **Center finger** in the camera panel resets the neutral pose and holds the race until centering finishes. The preview reports calibration progress, the selected finger and direction. Missing tracking holds the current lane until reacquisition. Touch and keyboard controls remain available.
 
-Automated landmark fixtures check translation/scale invariance, finger selection, mirroring, folded-hand recovery and lane transitions. They do not establish physical webcam-recognition accuracy for every hand, camera or lighting condition.
+Steering uses fingertip displacement relative to its base joint and palm size, with camera-aspect correction, smoothing and a dead zone. Relaxed/bent fingers are accepted; translating the whole hand does not steer. MediaPipe loads on demand, and camera frames are processed locally. Automated tests cover bent-finger movement, calibration, jitter, translation/scale invariance, explicit selection, loss/recovery and the browser adapter. A separate local check ran the actual MediaPipe JS/WASM detector on its [public pointing-finger test image](https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/testdata/vision/BUILD); its measured landmarks are retained as a regression fixture. Subsequent fingertip shifts in that fixture are simulated. This still does not establish physical webcam-recognition accuracy in every lighting condition.
 
 ## Game rules
 
-Avoid motorcycles, cars, SUVs, pickups and trucks. Passing a traffic vehicle earns one score point; coin collection is counted separately. A collision ends the run and shows score, high score and collected coins. Speed progresses automatically from **50 → 75 → 90 → 100 mph**, changing approximately every 15 seconds. All locations use the same rules.
+Avoid motorcycles, cars, SUVs, pickups and trucks. Passing a traffic vehicle earns one score point; coin collection is counted separately. A collision ends the run and shows score, high score and collected coins. Speed progresses automatically from **100 → 150 → 180 → 200 mph**, changing approximately every 15 seconds. All locations use the same rules. Actual road and traffic motion are doubled from the earlier release; traffic starts appearing every second and coin trails every 55 simulation ticks. The spawn interval tightens with score to a minimum of half a second.
 
 The simulation runs at a fixed 60 Hz, independent of the display refresh rate. The original 470×630 driving world handles steering, collisions and spawning; a separate perspective renderer paints a 320-pixel-wide scene into a 960-pixel-wide display canvas. Portrait mode increases the rendering height to use phone screens more effectively without stretching the actors or changing collision coordinates. Road curves are a visual projection over the existing three steering lanes.
 
@@ -88,7 +88,8 @@ Playwright is free and development-only. CI runs the same unit and browser suite
 
 - Nine viewport sizes from 320×568 to 1366×900, including portrait/landscape rotation.
 - Touch/keyboard steering, pause, collision, restart, score persistence and background-tab pause.
-- Hand adapters, unavailable CDN/camera, pointer cancellation and 30/60/120 Hz game pacing.
+- Hand adapters, calibration waiting/recentering, small fingertip gestures, explicit finger selection, unavailable CDN/camera, pointer cancellation and 30/60/120 Hz game pacing.
+- Actual doubled road and traffic displacement at 100/200 mph, spawn cadence, speed HUD limits and lane-centered traffic.
 - Native fullscreen and external exits, unavailable/denied fullscreen fallback, responsive expanded view, local font loading and solid 3×3 canvas pixel blocks on straight/right/left sections.
 - Three distinct locations, actual coin pickup collisions, wrong-lane non-pickups, earning/unlocking/equipping a car, saved progress through reload and wreck/restart, garage dialog bounds and temporary progress when storage is unavailable.
 

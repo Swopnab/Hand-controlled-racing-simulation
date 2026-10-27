@@ -40,7 +40,10 @@ const handControl = {
   handDetected: false,
   currentZone: "CENTER", // 'LEFT', 'CENTER', 'RIGHT'
   rawX: 0.5, // Normalized finger direction; palm location does not steer
-  activeFinger: null,
+  activeFinger: "Index",
+  ready: false,
+  calibrationProgress: 0,
+  tracker: CyberSteering.createFingerTracker("Index"),
   fingerTip: null,
   rawY: 0.5,
 
@@ -57,6 +60,18 @@ const handControl = {
     leftBound: 0.38,
     rightBound: 0.62,
     hysteresis: 0.03,
+  },
+
+  setFinger(name) {
+    this.activeFinger = CyberSteering.FINGERS[name] ? name : "Index";
+    this.tracker = CyberSteering.createFingerTracker(this.activeFinger);
+    this.recenter();
+  },
+  recenter() {
+    this.tracker.reset();
+    this.ready = false;
+    this.calibrationProgress = 0;
+    this.currentZone = "CENTER";
   },
 
   // Initialize webcam and MediaPipe Hands
@@ -114,7 +129,7 @@ const handControl = {
     this.isActive = false;
     this.handDetected = false;
     this.currentZone = "CENTER";
-    this.activeFinger = null;
+    this.recenter();
     this.fingerTip = null;
     if (this.camera) {
       this.camera.stop();
@@ -147,23 +162,14 @@ const handControl = {
       results.image.naturalHeight ||
       results.image.height ||
       240;
-    const direction = CyberSteering.fingerDirection(
-      landmarks,
-      this.activeFinger,
-      imageWidth / imageHeight,
-    );
-    this.handDetected = Boolean(CyberSteering.mirroredPalm(landmarks));
-    if (direction) {
-      this.activeFinger = direction.finger;
-      this.fingerTip = direction.tip;
-      this.rawX = direction.x;
-      this.rawY = direction.y;
-      this.currentZone = this.calculateZone(this.rawX, this.currentZone);
-    } else {
-      this.activeFinger = null;
-      this.fingerTip = null;
-      this.rawX = 0.5;
-      this.currentZone = "CENTER";
+    const direction = this.tracker.read(landmarks, imageWidth / imageHeight);
+    this.handDetected = direction.tracked;
+    this.ready = direction.ready;
+    this.calibrationProgress = direction.progress;
+    this.fingerTip = direction.tip;
+    if (direction.tracked) {
+      this.rawX = Math.max(0, Math.min(1, 0.5 + (direction.delta || 0)));
+      this.currentZone = direction.zone;
     }
     if (this.handDetected) this.drawHandSkeleton(ctx, landmarks, w, h);
     this.drawZoneGuides(ctx, w, h);
@@ -187,15 +193,21 @@ const handControl = {
     ctx.textAlign = "center";
     ctx.fillStyle = "#00f2fe";
     ctx.fillText(
-      this.activeFinger
-        ? this.activeFinger + ": " + this.currentZone
-        : "Raise one finger",
+      !this.handDetected
+        ? "Show " + this.activeFinger + " finger"
+        : !this.ready
+          ? "Hold still " + this.calibrationProgress + "/5"
+          : this.activeFinger + ": " + this.currentZone,
       w / 2,
       33,
     );
     ctx.font = "24px CyberPixel, monospace";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("Point left / up / right", w / 2, 68);
+    ctx.fillText(
+      this.ready ? "Move tip left / right" : "Centering - race waits",
+      w / 2,
+      68,
+    );
     ctx.restore();
   },
 
@@ -266,7 +278,7 @@ const handControl = {
     });
 
     // Highlight the selected fingertip instead of a palm steering target
-    const centerPt = getPt(this.fingerTip ?? 9);
+    const centerPt = getPt(this.fingerTip ?? 8);
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -278,3 +290,12 @@ const handControl = {
 };
 
 window.handControl = handControl;
+
+document
+  .getElementById("finger-select")
+  .addEventListener("change", (event) =>
+    handControl.setFinger(event.target.value),
+  );
+document
+  .getElementById("btn-center-finger")
+  .addEventListener("click", () => handControl.recenter());

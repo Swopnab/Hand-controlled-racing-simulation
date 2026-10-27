@@ -51,21 +51,20 @@
   else root.CyberSteering = api;
 })(typeof globalThis === "object" ? globalThis : this);
 
-// Finger direction is relative to its base joint, independent of hand translation.
+// Calibrated fingertip displacement: the palm can stay anywhere in the frame.
 (function (root) {
-  const fingers = [
-    { name: "Index", base: 5, tip: 8 },
-    { name: "Middle", base: 9, tip: 12 },
-    { name: "Ring", base: 13, tip: 16 },
-    { name: "Little", base: 17, tip: 20 },
-    { name: "Thumb", base: 1, tip: 4 },
-  ];
-  function fingerDirection(
-    landmarks,
-    previousFinger = null,
-    aspectRatio = 4 / 3,
-  ) {
+  const FINGERS = Object.freeze({
+    Index: { base: 5, tip: 8 },
+    Middle: { base: 9, tip: 12 },
+    Ring: { base: 13, tip: 16 },
+    Little: { base: 17, tip: 20 },
+    Thumb: { base: 1, tip: 4 },
+  });
+  function fingerOffset(landmarks, finger = "Index", aspect = 4 / 3) {
     if (
+      !FINGERS[finger] ||
+      !Number.isFinite(aspect) ||
+      aspect <= 0 ||
       !Array.isArray(landmarks) ||
       landmarks.length < 21 ||
       landmarks.some(
@@ -73,46 +72,84 @@
       )
     )
       return null;
-    const point = (i) => ({
-      x: landmarks[i].x * aspectRatio,
-      y: landmarks[i].y,
-    });
-    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-    const wrist = point(0),
-      palm = distance(wrist, point(9));
-    if (palm < 0.025 || distance(point(5), point(17)) < 0.025) return null;
-    const raised = fingers.filter((f) => {
-      const base = point(f.base),
-        tip = point(f.tip),
-        length = distance(base, tip);
-      let chain = 0;
-      for (let i = f.base; i < f.tip; i++)
-        chain += distance(point(i), point(i + 1));
-      return (
-        length > palm * 0.45 &&
-        chain > 0 &&
-        length / chain > 0.8 &&
-        distance(tip, wrist) > distance(base, wrist) + palm * 0.12
-      );
-    });
-    const finger = raised.find((f) => f.name === previousFinger) || raised[0];
-    if (!finger) return null;
-    const base = point(finger.base),
-      tip = point(finger.tip),
-      length = distance(base, tip);
-    // Mirror camera coordinates: pointing left in the preview steers left.
-    const horizontal = (base.x - tip.x) / length;
-    return {
-      finger: finger.name,
-      base: finger.base,
-      tip: finger.tip,
-      x: 0.5 + horizontal * 0.5,
-      y: landmarks[finger.tip].y,
-    };
+    const point = (i) => ({ x: landmarks[i].x * aspect, y: landmarks[i].y });
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const palm = dist(point(0), point(9));
+    if (palm < 0.025 || dist(point(5), point(17)) < 0.02) return null;
+    const { base, tip } = FINGERS[finger],
+      b = point(base),
+      t = point(tip);
+    // Allow relaxed and bent fingers; do not require a rigid straight pointing pose.
+    if (dist(b, t) < palm * 0.25) return null;
+    return { offset: (b.x - t.x) / palm, tip, finger };
+  }
+  function createFingerTracker(finger = "Index") {
+    let samples = [],
+      neutral = null,
+      smoothed = 0,
+      zone = "CENTER";
+    function reset() {
+      samples = [];
+      neutral = null;
+      smoothed = 0;
+      zone = "CENTER";
+    }
+    function read(landmarks, aspect = 4 / 3) {
+      const signal = fingerOffset(landmarks, finger, aspect);
+      if (!signal) {
+        if (neutral === null) samples = [];
+        return {
+          tracked: false,
+          ready: neutral !== null,
+          zone,
+          progress: 0,
+          finger,
+          tip: FINGERS[finger]?.tip,
+        };
+      }
+      if (neutral === null) {
+        samples.push(signal.offset);
+        if (Math.max(...samples) - Math.min(...samples) > 0.12)
+          samples = [signal.offset];
+        if (samples.length >= 5) {
+          neutral = samples.reduce((a, b) => a + b, 0) / samples.length;
+          smoothed = 0;
+        }
+        return {
+          ...signal,
+          tracked: true,
+          ready: neutral !== null,
+          zone: "CENTER",
+          progress: samples.length,
+        };
+      }
+      const delta = signal.offset - neutral;
+      smoothed += (delta - smoothed) * 0.55;
+      const enter = 0.18,
+        exit = 0.1;
+      if (zone === "LEFT")
+        zone =
+          smoothed > enter ? "RIGHT" : smoothed > -exit ? "CENTER" : "LEFT";
+      else if (zone === "RIGHT")
+        zone =
+          smoothed < -enter ? "LEFT" : smoothed < exit ? "CENTER" : "RIGHT";
+      else
+        zone =
+          smoothed < -enter ? "LEFT" : smoothed > enter ? "RIGHT" : "CENTER";
+      return {
+        ...signal,
+        tracked: true,
+        ready: true,
+        zone,
+        delta: smoothed,
+        progress: 5,
+      };
+    }
+    return { read, reset };
   }
   const api =
     typeof module === "object" && module.exports
       ? module.exports
       : root.CyberSteering;
-  api.fingerDirection = fingerDirection;
+  Object.assign(api, { FINGERS, fingerOffset, createFingerTracker });
 })(typeof globalThis === "object" ? globalThis : this);

@@ -1077,3 +1077,38 @@ dialog {
     margin-bottom: 8px;
   }
 }
+
+.finger-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 8px;
+  margin-top: 12px;
+  line-height: 1.8;
+}
+.finger-choice select {
+  font:
+    8px CyberPixel,
+    monospace;
+  min-height: 32px;
+  padding: 5px 8px;
+  background: #080d16;
+  color: white;
+  border: 1px solid #475569;
+}
+#btn-center-finger {
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 3px;
+  font-size: 8px;
+  margin-top: 5px;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .finger-choice {
+    margin-top: 6px;
+  }
+  .finger-choice select {
+    min-height: 28px;
+  }
+}

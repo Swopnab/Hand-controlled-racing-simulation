@@ -19,7 +19,7 @@
       type="font/ttf"
       crossorigin
     />
-    <link rel="stylesheet" href="style.css?v=restore3" />
+    <link rel="stylesheet" href="style.css?v=pace4" />
   </head>
   <body>
     <div id="app-container">
@@ -91,9 +91,19 @@
                     Play Hand Mode
                   </button>
                 </div>
+                <label class="finger-choice" for="finger-select"
+                  >Hand mode finger
+                  <select id="finger-select">
+                    <option>Index</option>
+                    <option>Middle</option>
+                    <option>Ring</option>
+                    <option>Little</option>
+                    <option>Thumb</option>
+                  </select>
+                </label>
                 <p class="mode-help">
-                  Touch: tap arrows. Hand mode: keep your palm still and point
-                  one finger left, up, or right.
+                  Hand mode: hold your finger still to center, then move its tip
+                  left or right.
                 </p>
                 <p id="camera-status" role="status" hidden></p>
               </div>
@@ -157,16 +167,19 @@
               </div>
               <div id="instructions-section">
                 <span
-                  >Keep your palm still. Point a raised finger left / up /
-                  right.</span
+                  >Keep your palm still. Move the selected fingertip left or
+                  right from its centered position.</span
                 >
               </div>
+              <button id="btn-center-finger" class="cyber-btn secondary">
+                Center finger
+              </button>
             </aside>
           </div>
           <div id="game-hud">
             <div class="hud-speed-panel">
               <div class="speed-readout">
-                <strong id="hud-speed">50 mph</strong
+                <strong id="hud-speed">100 mph</strong
                 ><span class="hud-label">AUTO THROTTLE</span>
               </div>
               <div class="speed-meter" aria-hidden="true">
@@ -253,12 +266,12 @@
         </p>
       </dialog>
     </div>
-    <script src="fullscreen.js?v=restore3" defer></script>
-    <script src="steering.js?v=restore3" defer></script>
-    <script src="progression.js?v=restore3" defer></script>
-    <script src="pixel-art.js?v=restore3" defer></script>
-    <script src="road-renderer.js?v=restore3" defer></script>
-    <script src="handControl.js?v=restore3" defer></script>
-    <script src="game.js?v=restore3" defer></script>
+    <script src="fullscreen.js?v=pace4" defer></script>
+    <script src="steering.js?v=pace4" defer></script>
+    <script src="progression.js?v=pace4" defer></script>
+    <script src="pixel-art.js?v=pace4" defer></script>
+    <script src="road-renderer.js?v=pace4" defer></script>
+    <script src="handControl.js?v=pace4" defer></script>
+    <script src="game.js?v=pace4" defer></script>
   </body>
 </html>

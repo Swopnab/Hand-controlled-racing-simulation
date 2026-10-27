@@ -2,6 +2,8 @@ const test = require("node:test"),
   assert = require("node:assert/strict");
 const {
   WORLD,
+  LANE_CENTERS,
+  LANE_MARKERS,
   VIEW,
   ROUTES,
   COURSE,
@@ -71,4 +73,22 @@ test("wide road keeps nearby actors finite beyond the bottom edge", () => {
           Number.isFinite(p.scale),
       );
     }
+});
+
+test("every vehicle lane is centered between its painted dividers on straights and bends", () => {
+  const edges = [-1, ...LANE_MARKERS, 1];
+  for (const distance of [0, 3600, 9000])
+    for (const y of [0, 200, 450, 572, 630])
+      for (let lane = 0; lane < 3; lane++) {
+        const center = project(LANE_CENTERS[lane], y, distance),
+          road = roadPoint(center.t, distance);
+        const left = road.x + edges[lane] * road.half,
+          right = road.x + edges[lane + 1] * road.half;
+        assert(Math.abs(center.x - (left + right) / 2) < 1e-9);
+        assert(
+          center.x - 56 * center.scale > left &&
+            center.x + 56 * center.scale < right,
+          "Vehicle sprite fits inside lane",
+        );
+      }
 });
